@@ -1,7 +1,9 @@
+// --- File: lib/ui/home_screen.dart ---
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../state/hub_state.dart';
 import 'setup_screen.dart';
@@ -18,7 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isCreatingRepo = false;
   bool _isUpdatingTemplate = false;
   
-  // --- NEW: Scroll Controller for the library list ---
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -67,7 +68,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final nameController = TextEditingController();
     
-    // 1. Ask for the project name
     final String? projectName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -103,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isCreatingRepo = true);
 
     try {
-      // 2. Clone offline using our new method
       await hubState.createProjectFromTemplate(projectName);
       
       setState(() {
@@ -138,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Stack(
       children: [
-        // --- SETTINGS BUTTON ---
         Positioned(
           top: 20,
           right: 20,
@@ -161,7 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Choice A: Create New Repo
                   _MenuCard(
                     title: "Create New\nRedleaf Repo",
                     icon: Icons.add_box_outlined,
@@ -169,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: _createNewRepo,
                   ),
                   const SizedBox(width: 40),
-                  // Choice B: Open Library
                   _MenuCard(
                     title: "Open Project\nLibrary",
                     icon: Icons.view_list_rounded,
@@ -182,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 60),
 
-              // Template Management Button
               if (hubState.isTemplateReady)
                 TextButton.icon(
                   icon: _isUpdatingTemplate 
@@ -242,76 +237,27 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // The iTunes-style Candy Striped List with Native Scrollbar
         Expanded(
           child: hubState.projects.isEmpty
               ? const Center(child: Text("No Redleaf projects found in your Master Folder.", style: TextStyle(color: Colors.white54)))
               : Scrollbar(
                   controller: _scrollController,
-                  thumbVisibility: true, // Forces the scrollbar to be visible
+                  thumbVisibility: true,
                   child: ListView.builder(
                     controller: _scrollController,
                     itemCount: hubState.projects.length,
                     itemBuilder: (context, index) {
                       final project = hubState.projects[index];
-                      
                       final isActiveProject = hubState.activeProject?.path == project.path;
                       final isOnline = isActiveProject && hubState.isServerRunning;
-
-                      // Candy striping: alternating dark colors
                       final bgColor = index % 2 == 0 ? const Color(0xFF0A0A0A) : const Color(0xFF111111);
 
-                      return Container(
-                        color: bgColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                        child: Row(
-                          children: [
-                            Icon(Icons.folder, color: isActiveProject ? (isOnline ? Colors.greenAccent : Colors.amber) : const Color(0xFFA22323), size: 28),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(project.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white)),
-                                  const SizedBox(height: 4),
-                                  Text(project.path, style: const TextStyle(fontSize: 12, color: Color(0xFF828290))),
-                                ],
-                              ),
-                            ),
-                            
-                            // Server Status Indicator
-                            if (isActiveProject)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 20.0),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.circle, color: isOnline ? Colors.greenAccent : Colors.amber, size: 10),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      isOnline ? "Online" : "Waiting for Server...", 
-                                      style: TextStyle(color: isOnline ? Colors.greenAccent : Colors.amber, fontWeight: FontWeight.bold)
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            // Start/Stop Button
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isActiveProject ? const Color(0xFF383842) : const Color(0xFFA22323),
-                                foregroundColor: Colors.white,
-                              ),
-                              onPressed: () {
-                                if (isActiveProject) {
-                                  hubState.unlinkServer();
-                                } else {
-                                  hubState.startProjectServer(project);
-                                }
-                              },
-                              child: Text(isActiveProject ? "Unlink UI" : "Pop Terminal Server"),
-                            )
-                          ],
-                        ),
+                      return _ProjectListItem(
+                        project: project,
+                        isActiveProject: isActiveProject,
+                        isOnline: isOnline,
+                        bgColor: bgColor,
+                        hubState: hubState,
                       );
                     },
                   ),
@@ -342,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4fc1ff), // Node Leaf Blue
+                      backgroundColor: const Color(0xFF4fc1ff),
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                     ),
@@ -362,9 +308,170 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final hubState = context.watch<HubState>();
-
     return Scaffold(
       body: _showLibrary ? _buildLibrary(hubState) : _buildMenu(),
+    );
+  }
+}
+
+// --- NEW WIDGET: Stateful Project List Item to handle hover state ---
+class _ProjectListItem extends StatefulWidget {
+  final RedleafProject project;
+  final bool isActiveProject;
+  final bool isOnline;
+  final Color bgColor;
+  final HubState hubState;
+
+  const _ProjectListItem({
+    required this.project,
+    required this.isActiveProject,
+    required this.isOnline,
+    required this.bgColor,
+    required this.hubState,
+  });
+
+  @override
+  State<_ProjectListItem> createState() => _ProjectListItemState();
+}
+
+class _ProjectListItemState extends State<_ProjectListItem> {
+  // Track hovers independently
+  bool _isHoveringRoot = false;
+  bool _isHoveringDocs = false;
+
+  Future<void> _openRootFolder() async {
+    final uri = Uri.file(widget.project.path);
+    
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Could not open folder at: ${widget.project.path}"), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  Future<void> _openDocumentsFolder() async {
+    final docsPath = p.join(widget.project.path, 'documents');
+    final uri = Uri.file(docsPath);
+    
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Could not open folder at: $docsPath"), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: widget.bgColor,
+      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+      child: Row(
+        children: [
+          Icon(Icons.folder, color: widget.isActiveProject ? (widget.isOnline ? Colors.greenAccent : Colors.amber) : const Color(0xFFA22323), size: 28),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.project.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text(widget.project.path, style: const TextStyle(fontSize: 12, color: Color(0xFF828290))),
+              ],
+            ),
+          ),
+          
+          // Server Status Indicator
+          if (widget.isActiveProject)
+            Padding(
+              padding: const EdgeInsets.only(right: 20.0),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, color: widget.isOnline ? Colors.greenAccent : Colors.amber, size: 10),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.isOnline ? "Online" : "Waiting for Server...", 
+                    style: TextStyle(color: widget.isOnline ? Colors.greenAccent : Colors.amber, fontWeight: FontWeight.bold)
+                  ),
+                ],
+              ),
+            ),
+
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Hover "Root" Button
+              MouseRegion(
+                onEnter: (_) => setState(() => _isHoveringRoot = true),
+                onExit: (_) => setState(() => _isHoveringRoot = false),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: _isHoveringRoot ? 1.0 : 0.3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 10.0),
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.source, size: 18),
+                      label: const Text("Root"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Color(0xFF383842)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      onPressed: _openRootFolder,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Hover "Documents" Button
+              MouseRegion(
+                onEnter: (_) => setState(() => _isHoveringDocs = true),
+                onExit: (_) => setState(() => _isHoveringDocs = false),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: _isHoveringDocs ? 1.0 : 0.3,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 15.0),
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.folder_open, size: 18),
+                      label: const Text("Documents"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Color(0xFF383842)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      onPressed: _openDocumentsFolder,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Start/Stop Button
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.isActiveProject ? const Color(0xFF383842) : const Color(0xFFA22323),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  if (widget.isActiveProject) {
+                    widget.hubState.unlinkServer();
+                  } else {
+                    widget.hubState.startProjectServer(widget.project);
+                  }
+                },
+                child: Text(widget.isActiveProject ? "Unlink UI" : "Pop Terminal Server"),
+              )
+            ],
+          )
+        ],
+      ),
     );
   }
 }
@@ -394,7 +501,7 @@ class _MenuCard extends StatelessWidget {
           height: 300,
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E24),
-            borderRadius: BorderRadius.circular(24), // Rounded edges
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0xFF383842), width: 2),
             boxShadow: [
               BoxShadow(
