@@ -15,7 +15,7 @@ class HubState extends ChangeNotifier {
   String? homeDirectory;
   String? nodeLeafPath;
   String? condaEnv; 
-  String templateGitUrl = 'https://github.com/nathanfx330/redleaf.git'; // --- NEW: Dynamic Git URL ---
+  String templateGitUrl = 'https://github.com/nathanfx330/redleaf.git';
   
   List<RedleafProject> projects = [];
   bool isLoading = true;
@@ -24,7 +24,7 @@ class HubState extends ChangeNotifier {
   RedleafProject? activeProject;
   bool _isServerResponding = false;
   Timer? _pingTimer;
-  int _failedPingCount = 0; // Tracks consecutive failures
+  int _failedPingCount = 0; 
   
   // --- TEMPLATE TRACKING ---
   bool isTemplateReady = false;
@@ -64,7 +64,7 @@ class HubState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('homeDirectory', homeDir);
     await prefs.setString('nodeLeafPath', nodePath);
-    await prefs.setString('templateGitUrl', gitUrl); // Save Git URL
+    await prefs.setString('templateGitUrl', gitUrl);
     
     if (conda != null && conda.isNotEmpty) {
       await prefs.setString('condaEnv', conda);
@@ -82,7 +82,6 @@ class HubState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Completely wipe the app state and return to setup screen
   Future<void> resetApp() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -90,10 +89,10 @@ class HubState extends ChangeNotifier {
     homeDirectory = null;
     nodeLeafPath = null;
     condaEnv = null;
-    templateGitUrl = 'https://github.com/nathanfx330/redleaf.git'; // Reset to default
+    templateGitUrl = 'https://github.com/nathanfx330/redleaf.git';
     projects.clear();
     isTemplateReady = false;
-    unlinkServer(); // Cancels the timer and drops the active project
+    unlinkServer(); 
     
     notifyListeners();
   }
@@ -116,7 +115,6 @@ class HubState extends ChangeNotifier {
       final result = await Process.run('git', ['pull'], workingDirectory: templatePath);
       if (result.exitCode != 0) throw Exception(result.stderr);
     } else {
-      // Use the dynamic URL
       final result = await Process.run('git', ['clone', templateGitUrl, templatePath]);
       if (result.exitCode != 0) throw Exception(result.stderr);
     }
@@ -187,7 +185,7 @@ class HubState extends ChangeNotifier {
   
   Future<void> startProjectServer(RedleafProject project) async {
     activeProject = project;
-    _failedPingCount = 0; // Reset failure count on new launch
+    _failedPingCount = 0; 
     notifyListeners();
 
     try {
@@ -196,7 +194,7 @@ class HubState extends ChangeNotifier {
         if (Platform.isWindows) {
           commandString = 'conda activate $condaEnv && python run.py';
         } else {
-          commandString = 'eval "\$(conda shell.bash hook)" && conda activate $condaEnv && python3 run.py';
+          commandString = 'source ~/.bashrc; eval "\$(conda shell.bash hook)"; conda activate $condaEnv && python3 run.py';
         }
       } else {
         commandString = Platform.isWindows ? 'python run.py' : 'python3 run.py';
@@ -205,7 +203,7 @@ class HubState extends ChangeNotifier {
       if (Platform.isLinux) {
         await Process.start(
           'gnome-terminal', 
-          ['--', 'bash', '-c', '$commandString; echo ""; echo "Server Stopped."; read -p "Press Enter to close..."'], 
+          ['--', 'bash', '-ic', '$commandString; echo ""; echo "Server Stopped."; read -p "Press Enter to close..."'], 
           workingDirectory: project.path,
           mode: ProcessStartMode.detached
         );
@@ -235,6 +233,7 @@ class HubState extends ChangeNotifier {
 
   void _startPingingServer() {
     _pingTimer?.cancel();
+    
     _pingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (activeProject == null) {
         timer.cancel();
@@ -244,27 +243,24 @@ class HubState extends ChangeNotifier {
       }
 
       try {
-        final client = HttpClient();
-        client.connectionTimeout = const Duration(seconds: 1);
-        final request = await client.getUrl(Uri.parse('http://127.0.0.1:5000/'));
-        final response = await request.close();
+        // --- BULLETPROOF FIX: Raw TCP Socket Ping ---
+        // Just checks if port 5000 is open, completely ignoring HTTP redirects.
+        final socket = await Socket.connect('127.0.0.1', 5000, timeout: const Duration(milliseconds: 500));
+        socket.destroy(); // It's alive, close the connection immediately.
         
-        // Success! Reset failure count and ensure UI is green
         _failedPingCount = 0;
         if (!_isServerResponding) {
           _isServerResponding = true;
           notifyListeners();
         }
       } catch (e) {
-        // Ping failed.
         _failedPingCount++;
         
-        // If it fails 3 times in a row (6 seconds total), assume terminal was closed
-        if (_failedPingCount >= 3) {
+        // Give it 4 failures (8 seconds total) to account for slow Conda activation
+        if (_failedPingCount >= 4) {
           debugPrint("Server stopped responding. Auto-unlinking UI.");
           unlinkServer();
         } else if (_isServerResponding) {
-          // If it just failed once but was previously green, turn it amber immediately
           _isServerResponding = false;
           notifyListeners();
         }
