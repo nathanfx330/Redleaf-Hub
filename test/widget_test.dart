@@ -58,7 +58,7 @@ void main() {
     addTearDown(() => state?.dispose());
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<_InMemoryHubState>.value(
+      ChangeNotifierProvider<HubState>.value(
         value: state!,
         child: const RedleafHubApp(),
       ),
