@@ -107,14 +107,18 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
         condaEnv: widget.condaEnv,
       );
       if (!mounted || requestVersion != _loadVersion ||
-          metadataRequest != _metadataRequestVersion) return;
+          metadataRequest != _metadataRequestVersion) {
+        return;
+      }
       setState(() {
         _metadata = metadata;
         _metadataLoading = false;
       });
     } catch (error) {
       if (!mounted || requestVersion != _loadVersion ||
-          metadataRequest != _metadataRequestVersion) return;
+          metadataRequest != _metadataRequestVersion) {
+        return;
+      }
       setState(() {
         _metadataError = error.toString();
         _metadataLoading = false;
