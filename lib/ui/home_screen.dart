@@ -376,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 390,
                       child: ProjectInfoPanel(
                         key: ValueKey(selectedProject!.path),
-                        project: selectedProject,
+                        project: selectedProject!,
                         condaEnv: hubState.condaEnv,
                       ),
                     ),
