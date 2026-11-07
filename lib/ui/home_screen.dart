@@ -375,8 +375,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(
                       width: 390,
                       child: ProjectInfoPanel(
-                        key: ValueKey(selectedProject!.path),
-                        project: selectedProject!,
+                        key: ValueKey(selectedProject.path),
+                        project: selectedProject,
                         condaEnv: hubState.condaEnv,
                       ),
                     ),
@@ -689,7 +689,7 @@ class _MenuCard extends StatelessWidget {
             border: Border.all(color: const Color(0xFF383842), width: 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               )
