@@ -16,10 +16,12 @@ class ProjectInfoPanel extends StatefulWidget {
     super.key,
     required this.project,
     this.condaEnv,
+    this.onClose,
   });
 
   final RedleafProject project;
   final String? condaEnv;
+  final VoidCallback? onClose;
 
   @override
   State<ProjectInfoPanel> createState() => _ProjectInfoPanelState();
@@ -428,6 +430,12 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
                   onPressed: _metadataLoading ? null : _refreshMetadata,
                   icon: const Icon(Icons.refresh, color: Colors.white54),
                 ),
+                if (widget.onClose != null)
+                  IconButton(
+                    tooltip: 'Close inspector',
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                  ),
               ],
             ),
           ),
