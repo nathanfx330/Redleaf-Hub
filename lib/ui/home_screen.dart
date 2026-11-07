@@ -269,6 +269,17 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _toggleInspectorFromHeader(RedleafProject project) {
+    if (_inspectorOpen) {
+      _setInspectorOpen(false);
+    } else {
+      // The list may have a default or search-derived selected project.
+      // Make that selection explicit so its row icon can close the drawer.
+      setState(() => _selectedProjectPath = project.path);
+      _setInspectorOpen(true);
+    }
+  }
+
   // --- UI: SEARCHABLE PROJECT LIBRARY ---
   Widget _buildLibrary(HubState hubState) {
     final query = _searchController.text.trim().toLowerCase();
@@ -317,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 onPressed: selectedProject == null
                     ? null
-                    : () => _setInspectorOpen(!_inspectorOpen),
+                    : () => _toggleInspectorFromHeader(selectedProject!),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white54),
