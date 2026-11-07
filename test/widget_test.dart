@@ -120,8 +120,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Hide inspector'), findsOneWidget);
 
-    // The per-project info icon must close the inspector on the next click.
-    await tester.tap(find.byTooltip('Project information').first);
+    // Clicking the project NAME (the row's InkWell) closes the drawer.
+    await tester.tap(find.text('Second Dataset').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Show inspector'), findsOneWidget);
@@ -130,11 +130,29 @@ void main() {
       greaterThanOrEqualTo(viewportWidth),
     );
 
-    // Clicking the exact same project's info icon again reopens it.
-    await tester.tap(find.byTooltip('Project information').first);
+    // The same row toggles it open, using the existing horizontal slide.
+    await tester.tap(find.text('Second Dataset').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Hide inspector'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Project Info')).dx, lessThan(viewportWidth));
+    expect(
+      tester.getTopLeft(find.text('Project Info')).dx,
+      lessThan(viewportWidth),
+    );
+
+    // The information icon still uses the same toggle.
+    await tester.tap(find.byTooltip('Project information').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Show inspector'), findsOneWidget);
+
+    // Opening the first project while another was selected switches details.
+    await tester.enterText(find.byType(TextField).first, '');
+    await tester.pump();
+    await tester.tap(find.text('First Archive').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Hide inspector'), findsOneWidget);
+    expect(find.text('First Archive'), findsNWidgets(2));
   }, timeout: const Timeout(Duration(seconds: 20)));
 }
