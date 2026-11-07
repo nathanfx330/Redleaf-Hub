@@ -8,7 +8,9 @@ Instead of manually managing terminal windows, Python environments, and scattere
 
 ## ✨ Key Features
 
-* **Project Library:** A clean, minimalist ui list of all your Redleaf knowledge bases.
+* **Project Library:** A searchable, minimalist list of all your Redleaf knowledge bases, with a project information sidebar.
+* **Offline Project Inspector:** Reads document tags directly from each project's `knowledge_base.db` and displays external `.rlink` folder targets with missing-directory warnings and relocation controls.
+* **Project Notes:** Automatically saves notes separately for each project in `.redleaf_hub_notes.txt` at that project's root.
 * **Offline Project Generation:** Caches a master template of the Redleaf repository locally. Creating a new project clones it directly from your hard drive, completely internet-independent.
 * **Smart Server Detection:** Click "Pop Terminal Server" to spawn a native OS terminal running the backend. The Hub silently polls the server and illuminates a green "Online" indicator when the database is unlocked and ready.
 * **Node Leaf Integration:** Once a server is live, a launcher bar slides up allowing you to instantly boot your compiled Node Leaf visual canvas.
@@ -64,6 +66,20 @@ On the first launch, you will be greeted by the **Setup Screen**.
 2. Click **Create New Redleaf Repo** to spin up an isolated, offline instance.
 3. Click **Pop Terminal Server** on your new project.
 4. Wait for the indicator to turn **Online**, then click **Launch Node Leaf**.
+
+---
+
+## 🔎 Project Library & Info Panel
+
+Open **Project Library** and type in the search field to filter by project name or folder path. Select a project to open its information panel on the right. On narrower windows, use the **info** button to open the same panel as a dialog.
+
+The panel shows:
+
+- **Redleaf tags** and their document counts, read from the local `knowledge_base.db` SQLite database without starting the Flask server. Python 3 must be available, either on the system path or through the Conda environment configured in Hub Settings.
+- **RLink locations** from `documents/*.rlink`. Green indicates an available directory, and orange indicates a missing or unreadable target. Use **Relocate** to select the new directory for a missing link. This rewrites only that `.rlink` file; it does not move any external documents.
+- **Project notes** in the editable notes field, automatically saved after typing stops. Notes live in `.redleaf_hub_notes.txt` under the selected project's root and move with that project.
+
+The tag list can be refreshed using the refresh button at the top of the info panel. Reading tags and RLinks requires no network connection.
 
 ---
 
