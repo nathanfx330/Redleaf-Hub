@@ -37,6 +37,7 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
   bool _notesLoading = true;
   bool _metadataLoading = true;
   int _loadVersion = 0;
+  int _metadataRequestVersion = 0;
 
   @override
   void initState() {
@@ -94,6 +95,7 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
 
   Future<void> _refreshMetadata({int? version}) async {
     final requestVersion = version ?? _loadVersion;
+    final metadataRequest = ++_metadataRequestVersion;
     final path = widget.project.path;
     setState(() {
       _metadataLoading = true;
@@ -104,13 +106,15 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
         path,
         condaEnv: widget.condaEnv,
       );
-      if (!mounted || requestVersion != _loadVersion) return;
+      if (!mounted || requestVersion != _loadVersion ||
+          metadataRequest != _metadataRequestVersion) return;
       setState(() {
         _metadata = metadata;
         _metadataLoading = false;
       });
     } catch (error) {
-      if (!mounted || requestVersion != _loadVersion) return;
+      if (!mounted || requestVersion != _loadVersion ||
+          metadataRequest != _metadataRequestVersion) return;
       setState(() {
         _metadataError = error.toString();
         _metadataLoading = false;
