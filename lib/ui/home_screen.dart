@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state/hub_state.dart';
 import 'setup_screen.dart';
+import 'project_info_panel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,10 +22,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isUpdatingTemplate = false;
   
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedProjectPath;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -211,11 +215,47 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- UI: CANDY-STRIPED PROJECT LIST ---
+  // On smaller windows, the project details become a dialog rather than
+  // squeezing the project controls into an unusably narrow list.
+  void _selectProject(RedleafProject project) {
+    setState(() => _selectedProjectPath = project.path);
+    if (MediaQuery.sizeOf(context).width < 1050) {
+      final conda = context.read<HubState>().condaEnv;
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: const Color(0xFF16161C),
+          child: SizedBox(
+            width: 460,
+            height: MediaQuery.sizeOf(ctx).height * 0.84,
+            child: ProjectInfoPanel(project: project, condaEnv: conda),
+          ),
+        ),
+      );
+    }
+  }
+
+  // --- UI: SEARCHABLE PROJECT LIBRARY ---
   Widget _buildLibrary(HubState hubState) {
+    final query = _searchController.text.trim().toLowerCase();
+    final visibleProjects = hubState.projects.where((project) {
+      return project.name.toLowerCase().contains(query) ||
+          project.path.toLowerCase().contains(query);
+    }).toList();
+
+    RedleafProject? selectedProject;
+    for (final project in visibleProjects) {
+      if (project.path == _selectedProjectPath) {
+        selectedProject = project;
+        break;
+      }
+    }
+    if (selectedProject == null && visibleProjects.isNotEmpty) {
+      selectedProject = visibleProjects.first;
+    }
+
     return Column(
       children: [
-        // Header
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           color: const Color(0xFF1E1E24),
@@ -226,42 +266,124 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () => setState(() => _showLibrary = false),
               ),
               const SizedBox(width: 10),
-              const Text("Project Library", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300, color: Colors.white)),
+              const Text(
+                'Project Library',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w300,
+                  color: Colors.white,
+                ),
+              ),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white54),
-                tooltip: "Scan for folders",
+                tooltip: 'Scan for folders',
                 onPressed: () => hubState.scanForProjects(),
               ),
             ],
           ),
         ),
-
-        Expanded(
-          child: hubState.projects.isEmpty
-              ? const Center(child: Text("No Redleaf projects found in your Master Folder.", style: TextStyle(color: Colors.white54)))
-              : Scrollbar(
-                  controller: _scrollController,
-                  thumbVisibility: true,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: hubState.projects.length,
-                    itemBuilder: (context, index) {
-                      final project = hubState.projects[index];
-                      final isActiveProject = hubState.activeProject?.path == project.path;
-                      final isOnline = isActiveProject && hubState.isServerRunning;
-                      final bgColor = index % 2 == 0 ? const Color(0xFF0A0A0A) : const Color(0xFF111111);
-
-                      return _ProjectListItem(
-                        project: project,
-                        isActiveProject: isActiveProject,
-                        isOnline: isOnline,
-                        bgColor: bgColor,
-                        hubState: hubState,
-                      );
-                    },
+        Container(
+          color: const Color(0xFF101015),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) {
+                    setState(() {});
+                    if (_scrollController.hasClients) {
+                      _scrollController.jumpTo(0);
+                    }
+                  },
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Search projects by name or path…',
+                    prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          ),
+                    filled: true,
+                    fillColor: const Color(0xFF22222A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                '${visibleProjects.length} / ${hubState.projects.length}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showSidebar =
+                  constraints.maxWidth >= 1050 && selectedProject != null;
+              return Row(
+                children: [
+                  Expanded(
+                    child: visibleProjects.isEmpty
+                        ? Center(
+                            child: Text(
+                              hubState.projects.isEmpty
+                                  ? 'No Redleaf projects found in your Master Folder.'
+                                  : 'No projects match your search.',
+                              style: const TextStyle(color: Colors.white54),
+                            ),
+                          )
+                        : Scrollbar(
+                            controller: _scrollController,
+                            thumbVisibility: true,
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              itemCount: visibleProjects.length,
+                              itemBuilder: (context, index) {
+                                final project = visibleProjects[index];
+                                final isActive = hubState.activeProject?.path == project.path;
+                                return _ProjectListItem(
+                                  key: ValueKey(project.path),
+                                  project: project,
+                                  isActiveProject: isActive,
+                                  isOnline: isActive && hubState.isServerRunning,
+                                  isSelected: project.path == selectedProject?.path,
+                                  bgColor: index.isEven
+                                      ? const Color(0xFF0A0A0A)
+                                      : const Color(0xFF111111),
+                                  hubState: hubState,
+                                  onSelect: () => _selectProject(project),
+                                );
+                              },
+                            ),
+                          ),
+                  ),
+                  if (showSidebar)
+                    SizedBox(
+                      width: 390,
+                      child: ProjectInfoPanel(
+                        key: ValueKey(selectedProject!.path),
+                        project: selectedProject,
+                        condaEnv: hubState.condaEnv,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
 
         // --- STUDIO LAUNCHER BAR ---
@@ -314,163 +436,225 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// --- NEW WIDGET: Stateful Project List Item to handle hover state ---
+// The project row is selectable without losing its existing folder/server
+// actions. Wrapping the actions keeps it usable beside the info panel.
 class _ProjectListItem extends StatefulWidget {
-  final RedleafProject project;
-  final bool isActiveProject;
-  final bool isOnline;
-  final Color bgColor;
-  final HubState hubState;
-
   const _ProjectListItem({
+    super.key,
     required this.project,
     required this.isActiveProject,
     required this.isOnline,
+    required this.isSelected,
     required this.bgColor,
     required this.hubState,
+    required this.onSelect,
   });
+
+  final RedleafProject project;
+  final bool isActiveProject;
+  final bool isOnline;
+  final bool isSelected;
+  final Color bgColor;
+  final HubState hubState;
+  final VoidCallback onSelect;
 
   @override
   State<_ProjectListItem> createState() => _ProjectListItemState();
 }
 
 class _ProjectListItemState extends State<_ProjectListItem> {
-  // Track hovers independently
   bool _isHoveringRoot = false;
   bool _isHoveringDocs = false;
 
-  Future<void> _openRootFolder() async {
-    final uri = Uri.file(widget.project.path);
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Could not open folder at: ${widget.project.path}"), backgroundColor: Colors.redAccent),
-        );
+  Future<void> _openDirectory(String path) async {
+    try {
+      final uri = Uri.file(path, windows: Platform.isWindows);
+      if (!await launchUrl(uri)) {
+        throw Exception('No file manager accepted the location');
       }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open folder: $path ($error)'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
-  Future<void> _openDocumentsFolder() async {
-    final docsPath = p.join(widget.project.path, 'documents');
-    final uri = Uri.file(docsPath);
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Could not open folder at: $docsPath"), backgroundColor: Colors.redAccent),
-        );
-      }
-    }
+  Widget _folderButton({
+    required String label,
+    required IconData icon,
+    required bool hovering,
+    required ValueChanged<bool> setHover,
+    required VoidCallback onPressed,
+  }) {
+    return MouseRegion(
+      onEnter: (_) => setHover(true),
+      onExit: (_) => setHover(false),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: hovering ? 1.0 : 0.6,
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 17),
+          label: Text(label),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white70,
+            side: const BorderSide(color: Color(0xFF383842)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: widget.bgColor,
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-      child: Row(
-        children: [
-          Icon(Icons.folder, color: widget.isActiveProject ? (widget.isOnline ? Colors.greenAccent : Colors.amber) : const Color(0xFFA22323), size: 28),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.project.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text(widget.project.path, style: const TextStyle(fontSize: 12, color: Color(0xFF828290))),
-              ],
+    final isActive = widget.isActiveProject;
+    final isOnline = widget.isOnline;
+    return Material(
+      color: widget.isSelected
+          ? const Color(0xFF22222D)
+          : widget.bgColor,
+      child: InkWell(
+        onTap: widget.onSelect,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: widget.isSelected
+                    ? const Color(0xFF4FC1FF)
+                    : Colors.transparent,
+                width: 3,
+              ),
+              bottom: const BorderSide(color: Color(0xFF24242B)),
             ),
           ),
-          
-          // Server Status Indicator
-          if (widget.isActiveProject)
-            Padding(
-              padding: const EdgeInsets.only(right: 20.0),
-              child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(Icons.circle, color: widget.isOnline ? Colors.greenAccent : Colors.amber, size: 10),
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.isOnline ? "Online" : "Waiting for Server...", 
-                    style: TextStyle(color: widget.isOnline ? Colors.greenAccent : Colors.amber, fontWeight: FontWeight.bold)
+                  Icon(
+                    Icons.folder,
+                    size: 27,
+                    color: isActive
+                        ? (isOnline ? Colors.greenAccent : Colors.amber)
+                        : const Color(0xFFA22323),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.project.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Tooltip(
+                          message: widget.project.path,
+                          child: Text(
+                            widget.project.path,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF828290),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Project information',
+                    icon: Icon(
+                      Icons.info_outline,
+                      color: widget.isSelected
+                          ? const Color(0xFF4FC1FF)
+                          : Colors.white54,
+                    ),
+                    onPressed: widget.onSelect,
                   ),
                 ],
               ),
-            ),
-
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Hover "Root" Button
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringRoot = true),
-                onExit: (_) => setState(() => _isHoveringRoot = false),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isHoveringRoot ? 1.0 : 0.3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 10.0),
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.source, size: 18),
-                      label: const Text("Root"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Color(0xFF383842)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (isActive)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: isOnline ? Colors.greenAccent : Colors.amber,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isOnline ? 'Online' : 'Waiting for Server…',
+                            style: TextStyle(
+                              color: isOnline ? Colors.greenAccent : Colors.amber,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      onPressed: _openRootFolder,
+                    ),
+                  _folderButton(
+                    label: 'Root',
+                    icon: Icons.source,
+                    hovering: _isHoveringRoot,
+                    setHover: (value) => setState(() => _isHoveringRoot = value),
+                    onPressed: () => _openDirectory(widget.project.path),
+                  ),
+                  _folderButton(
+                    label: 'Documents',
+                    icon: Icons.folder_open,
+                    hovering: _isHoveringDocs,
+                    setHover: (value) => setState(() => _isHoveringDocs = value),
+                    onPressed: () => _openDirectory(
+                      p.join(widget.project.path, 'documents'),
                     ),
                   ),
-                ),
-              ),
-
-              // Hover "Documents" Button
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringDocs = true),
-                onExit: (_) => setState(() => _isHoveringDocs = false),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isHoveringDocs ? 1.0 : 0.3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 15.0),
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text("Documents"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Color(0xFF383842)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                      onPressed: _openDocumentsFolder,
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isActive
+                          ? const Color(0xFF383842)
+                          : const Color(0xFFA22323),
                     ),
+                    onPressed: () {
+                      if (isActive) {
+                        widget.hubState.unlinkServer();
+                      } else {
+                        widget.hubState.startProjectServer(widget.project);
+                      }
+                    },
+                    child: Text(isActive ? 'Unlink UI' : 'Pop Terminal Server'),
                   ),
-                ),
+                ],
               ),
-
-              // Start/Stop Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.isActiveProject ? const Color(0xFF383842) : const Color(0xFFA22323),
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  if (widget.isActiveProject) {
-                    widget.hubState.unlinkServer();
-                  } else {
-                    widget.hubState.startProjectServer(widget.project);
-                  }
-                },
-                child: Text(widget.isActiveProject ? "Unlink UI" : "Pop Terminal Server"),
-              )
             ],
-          )
-        ],
+          ),
+        ),
       ),
     );
   }
