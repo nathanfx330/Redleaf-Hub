@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen>
               IconButton(
                 tooltip: _inspectorOpen ? 'Hide inspector' : 'Show inspector',
                 icon: Icon(
-                  _inspectorOpen ? Icons.dock_outlined : Icons.view_sidebar_outlined,
+                  Icons.info_outline,
                   color: _inspectorOpen ? const Color(0xFF4FC1FF) : Colors.white70,
                 ),
                 onPressed: selectedProject == null
@@ -438,8 +438,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 key: ValueKey(selectedProject.path),
                                 project: selectedProject,
                                 condaEnv: hubState.condaEnv,
-                                onClose: () => _setInspectorOpen(false),
-                              ),
+                                                              ),
                             ),
                           ),
                         ),
