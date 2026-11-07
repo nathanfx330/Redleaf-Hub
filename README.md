@@ -71,7 +71,7 @@ On the first launch, you will be greeted by the **Setup Screen**.
 
 ## 🔎 Project Library & Info Panel
 
-Open **Project Library** and type in the search field to filter by project name or folder path. The project inspector starts **closed**. Use the **Show inspector** button in the library header or select a project to slide the information panel in from the right. The **X** in the panel header (or **Hide inspector** in the library header) slides it back out. On wide windows, the list resizes alongside the panel; on narrow windows, the inspector slides over the list.
+Open **Project Library** and type in the search field to filter by project name or folder path. The project inspector starts **closed**. Use the **Show inspector** button in the library header or select a project to slide the information panel in from the right. Click the same **i** button again to slide it closed. The icon stays the same, with blue indicating active and muted gray indicating inactive. On wide windows, the list resizes alongside the panel; on narrow windows, the inspector slides over the list.
 
 The panel shows:
 
