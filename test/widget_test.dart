@@ -51,6 +51,13 @@ Future<_InMemoryHubState> _makeHubState() async {
 void main() {
   testWidgets('library search and inspector slide open, closed, and open again',
       (WidgetTester tester) async {
+    // Use a desktop-size viewport so the project info icon stays accessible
+    // while the side panel is open, just like the real Linux desktop app.
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     // SharedPreferences uses asynchronous initialization. Complete it outside
     // the widget-test fake clock, then pump the UI with deterministic state.
     final state = await tester.runAsync(_makeHubState);
@@ -112,5 +119,22 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Hide inspector'), findsOneWidget);
+
+    // The per-project info icon must close the inspector on the next click.
+    await tester.tap(find.byTooltip('Project information').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Show inspector'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Project Info')).dx,
+      greaterThanOrEqualTo(viewportWidth),
+    );
+
+    // Clicking the exact same project's info icon again reopens it.
+    await tester.tap(find.byTooltip('Project information').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Hide inspector'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Project Info')).dx, lessThan(viewportWidth));
   }, timeout: const Timeout(Duration(seconds: 20)));
 }
