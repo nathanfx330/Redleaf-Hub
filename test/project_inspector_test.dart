@@ -78,4 +78,29 @@ void main() {
     expect(metadata.links, isEmpty);
     expect(metadata.missingLinks, 0);
   });
+  test('tags load directly from a Redleaf SQLite knowledge base', () async {
+    if (Platform.isWindows) return; // Windows may use a Conda-only interpreter.
+
+    final dbPath = p.join(project.path, 'knowledge_base.db');
+    const makeDatabase = r'''
+import sqlite3
+import sys
+c = sqlite3.connect(sys.argv[1])
+c.execute("CREATE TABLE tags (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)")
+c.execute("CREATE TABLE document_tags (doc_id INTEGER, tag_id INTEGER)")
+c.executemany("INSERT INTO tags (id, name) VALUES (?, ?)", [(1, "people"), (2, "events")])
+c.executemany("INSERT INTO document_tags (doc_id, tag_id) VALUES (?, ?)", [(101, 1), (102, 1), (103, 2)])
+c.commit()
+c.close()
+''';
+
+    final created = await Process.run('python3', ['-c', makeDatabase, dbPath]);
+    expect(created.exitCode, 0, reason: created.stderr.toString());
+
+    final metadata = await ProjectInspector.load(project.path);
+    expect(metadata.tagsMessage, isNull);
+    expect(metadata.tags.map((tag) => tag.name), ['events', 'people']);
+    expect(metadata.tags.map((tag) => tag.documentCount), [1, 2]);
+  });
+
 }
