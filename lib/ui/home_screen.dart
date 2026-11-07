@@ -249,15 +249,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Selecting a project opens its details. The header button can toggle the
-  // same panel without changing the selected project.
-  void _selectProject(RedleafProject project) {
-    setState(() => _selectedProjectPath = project.path);
-    _setInspectorOpen(true);
-  }
-
-  // The project-row info icon is a toggle for that specific project's
-  // inspector. A different project's icon selects and opens that project.
+  // Clicking either the row or its info icon toggles that project's inspector.
+  // Clicking another project selects it and keeps the inspector open.
   void _toggleProjectInspector(RedleafProject project) {
     final alreadyOpenForProject =
         _inspectorOpen && _selectedProjectPath == project.path;
@@ -433,14 +426,12 @@ class _HomeScreenState extends State<HomeScreen>
                                       project: project,
                                       isActiveProject: isActive,
                                       isOnline: isActive && hubState.isServerRunning,
-                                      isSelected: project.path == selectedProject?.path,
                                       isInspectorActive: _inspectorOpen &&
                                           project.path == selectedProject?.path,
                                       bgColor: index.isEven
                                           ? const Color(0xFF0A0A0A)
                                           : const Color(0xFF111111),
                                       hubState: hubState,
-                                      onSelect: () => _selectProject(project),
                                       onToggleInfo: () => _toggleProjectInspector(project),
                                     );
                                   },
@@ -535,22 +526,18 @@ class _ProjectListItem extends StatefulWidget {
     required this.project,
     required this.isActiveProject,
     required this.isOnline,
-    required this.isSelected,
     required this.isInspectorActive,
     required this.bgColor,
     required this.hubState,
-    required this.onSelect,
     required this.onToggleInfo,
   });
 
   final RedleafProject project;
   final bool isActiveProject;
   final bool isOnline;
-  final bool isSelected;
   final bool isInspectorActive;
   final Color bgColor;
   final HubState hubState;
-  final VoidCallback onSelect;
   final VoidCallback onToggleInfo;
 
   @override
@@ -612,17 +599,17 @@ class _ProjectListItemState extends State<_ProjectListItem> {
     final isActive = widget.isActiveProject;
     final isOnline = widget.isOnline;
     return Material(
-      color: widget.isSelected
+      color: widget.isInspectorActive
           ? const Color(0xFF22222D)
           : widget.bgColor,
       child: InkWell(
-        onTap: widget.onSelect,
+        onTap: widget.onToggleInfo,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: widget.isSelected
+                color: widget.isInspectorActive
                     ? const Color(0xFF4FC1FF)
                     : Colors.transparent,
                 width: 3,
