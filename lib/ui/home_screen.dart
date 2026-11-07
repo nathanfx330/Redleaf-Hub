@@ -24,6 +24,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedProjectPath;
+  bool _inspectorOpen = false;
+  bool _inspectorHasOpened = false;
+
+  void _setInspectorOpen(bool open) {
+    setState(() {
+      _inspectorOpen = open;
+      if (open) _inspectorHasOpened = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -215,24 +224,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // On smaller windows, the project details become a dialog rather than
-  // squeezing the project controls into an unusably narrow list.
+  // Selecting a project opens its details. The header button can toggle the
+  // same panel without changing the selected project.
   void _selectProject(RedleafProject project) {
-    setState(() => _selectedProjectPath = project.path);
-    if (MediaQuery.sizeOf(context).width < 1050) {
-      final conda = context.read<HubState>().condaEnv;
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: const Color(0xFF16161C),
-          child: SizedBox(
-            width: 460,
-            height: MediaQuery.sizeOf(ctx).height * 0.84,
-            child: ProjectInfoPanel(project: project, condaEnv: conda),
-          ),
-        ),
-      );
-    }
+    setState(() {
+      _selectedProjectPath = project.path;
+      _inspectorOpen = true;
+      _inspectorHasOpened = true;
+    });
   }
 
   // --- UI: SEARCHABLE PROJECT LIBRARY ---
@@ -275,6 +274,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const Spacer(),
+              IconButton(
+                tooltip: _inspectorOpen ? 'Hide inspector' : 'Show inspector',
+                icon: Icon(
+                  _inspectorOpen ? Icons.dock_outlined : Icons.view_sidebar_outlined,
+                  color: _inspectorOpen ? const Color(0xFF4FC1FF) : Colors.white70,
+                ),
+                onPressed: selectedProject == null
+                    ? null
+                    : () => _setInspectorOpen(!_inspectorOpen),
+              ),
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white54),
                 tooltip: 'Scan for folders',
@@ -332,55 +341,85 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final showSidebar =
-                  constraints.maxWidth >= 1050 && selectedProject != null;
-              return Row(
-                children: [
-                  Expanded(
-                    child: visibleProjects.isEmpty
-                        ? Center(
-                            child: Text(
-                              hubState.projects.isEmpty
-                                  ? 'No Redleaf projects found in your Master Folder.'
-                                  : 'No projects match your search.',
-                              style: const TextStyle(color: Colors.white54),
-                            ),
-                          )
-                        : Scrollbar(
-                            controller: _scrollController,
-                            thumbVisibility: true,
-                            child: ListView.builder(
-                              controller: _scrollController,
-                              itemCount: visibleProjects.length,
-                              itemBuilder: (context, index) {
-                                final project = visibleProjects[index];
-                                final isActive = hubState.activeProject?.path == project.path;
-                                return _ProjectListItem(
-                                  key: ValueKey(project.path),
-                                  project: project,
-                                  isActiveProject: isActive,
-                                  isOnline: isActive && hubState.isServerRunning,
-                                  isSelected: project.path == selectedProject?.path,
-                                  bgColor: index.isEven
-                                      ? const Color(0xFF0A0A0A)
-                                      : const Color(0xFF111111),
-                                  hubState: hubState,
-                                  onSelect: () => _selectProject(project),
-                                );
-                              },
-                            ),
-                          ),
-                  ),
-                  if (showSidebar)
-                    SizedBox(
-                      width: 390,
-                      child: ProjectInfoPanel(
-                        key: ValueKey(selectedProject.path),
-                        project: selectedProject,
-                        condaEnv: hubState.condaEnv,
+              // Wide windows resize the list beside the inspector. On narrow
+              // windows the panel overlays the list so the list is never
+              // squeezed down to an unusable width.
+              final compact = constraints.maxWidth < 900;
+              final panelWidth = compact
+                  ? constraints.maxWidth * 0.82
+                  : 390.0;
+              final showInspector = _inspectorOpen && selectedProject != null;
+              const slideDuration = Duration(milliseconds: 300);
+              const slideCurve = Curves.easeInOutCubic;
+
+              return ClipRect(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AnimatedPadding(
+                      duration: slideDuration,
+                      curve: slideCurve,
+                      padding: EdgeInsets.only(
+                        right: !compact && showInspector ? panelWidth : 0,
+                      ),
+                      child: IgnorePointer(
+                        ignoring: compact && showInspector,
+                        child: visibleProjects.isEmpty
+                            ? Center(
+                                child: Text(
+                                  hubState.projects.isEmpty
+                                      ? 'No Redleaf projects found in your Master Folder.'
+                                      : 'No projects match your search.',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                              )
+                            : Scrollbar(
+                                controller: _scrollController,
+                                thumbVisibility: true,
+                                child: ListView.builder(
+                                  controller: _scrollController,
+                                  itemCount: visibleProjects.length,
+                                  itemBuilder: (context, index) {
+                                    final project = visibleProjects[index];
+                                    final isActive = hubState.activeProject?.path == project.path;
+                                    return _ProjectListItem(
+                                      key: ValueKey(project.path),
+                                      project: project,
+                                      isActiveProject: isActive,
+                                      isOnline: isActive && hubState.isServerRunning,
+                                      isSelected: project.path == selectedProject?.path,
+                                      bgColor: index.isEven
+                                          ? const Color(0xFF0A0A0A)
+                                          : const Color(0xFF111111),
+                                      hubState: hubState,
+                                      onSelect: () => _selectProject(project),
+                                    );
+                                  },
+                                ),
+                              ),
                       ),
                     ),
-                ],
+                    if (_inspectorHasOpened && selectedProject != null)
+                      AnimatedPositioned(
+                        duration: slideDuration,
+                        curve: slideCurve,
+                        top: 0,
+                        bottom: 0,
+                        right: showInspector ? 0 : -panelWidth,
+                        width: panelWidth,
+                        child: Material(
+                          elevation: 12,
+                          color: const Color(0xFF16161C),
+                          child: ProjectInfoPanel(
+                            key: ValueKey(selectedProject.path),
+                            project: selectedProject,
+                            condaEnv: hubState.condaEnv,
+                            onClose: () => _setInspectorOpen(false),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               );
             },
           ),
