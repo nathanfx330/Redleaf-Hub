@@ -78,7 +78,7 @@ class _SetupScreenState extends State<SetupScreen> {
       gitUrl
     );
     
-    if (!context.mounted) return;
+    if (!mounted) return;
     setState(() => _isLoading = false);
     
     // If editing from the home screen, we need to pop the navigator
