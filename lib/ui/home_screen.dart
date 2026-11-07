@@ -16,7 +16,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   bool _showLibrary = false;
   bool _isCreatingRepo = false;
   bool _isUpdatingTemplate = false;
@@ -26,16 +27,40 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedProjectPath;
   bool _inspectorOpen = false;
   bool _inspectorHasOpened = false;
+  late final AnimationController _inspectorController;
+  late final Animation<Offset> _inspectorSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _inspectorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _inspectorSlide = Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _inspectorController,
+      curve: Curves.easeInOutCubic,
+    ));
+  }
 
   void _setInspectorOpen(bool open) {
     setState(() {
       _inspectorOpen = open;
       if (open) _inspectorHasOpened = true;
     });
+    if (open) {
+      _inspectorController.forward();
+    } else {
+      _inspectorController.reverse();
+    }
   }
 
   @override
   void dispose() {
+    _inspectorController.dispose();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -227,11 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // Selecting a project opens its details. The header button can toggle the
   // same panel without changing the selected project.
   void _selectProject(RedleafProject project) {
-    setState(() {
-      _selectedProjectPath = project.path;
-      _inspectorOpen = true;
-      _inspectorHasOpened = true;
-    });
+    setState(() => _selectedProjectPath = project.path);
+    _setInspectorOpen(true);
   }
 
   // --- UI: SEARCHABLE PROJECT LIBRARY ---
@@ -400,21 +422,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     if (_inspectorHasOpened && selectedProject != null)
-                      AnimatedPositioned(
-                        duration: slideDuration,
-                        curve: slideCurve,
+                      Positioned(
                         top: 0,
                         bottom: 0,
-                        right: showInspector ? 0 : -panelWidth,
+                        right: 0,
                         width: panelWidth,
-                        child: Material(
-                          elevation: 12,
-                          color: const Color(0xFF16161C),
-                          child: ProjectInfoPanel(
-                            key: ValueKey(selectedProject.path),
-                            project: selectedProject,
-                            condaEnv: hubState.condaEnv,
-                            onClose: () => _setInspectorOpen(false),
+                        child: IgnorePointer(
+                          ignoring: !showInspector,
+                          child: SlideTransition(
+                            position: _inspectorSlide,
+                            child: Material(
+                              elevation: 12,
+                              color: const Color(0xFF16161C),
+                              child: ProjectInfoPanel(
+                                key: ValueKey(selectedProject.path),
+                                project: selectedProject,
+                                condaEnv: hubState.condaEnv,
+                                onClose: () => _setInspectorOpen(false),
+                              ),
+                            ),
                           ),
                         ),
                       ),
