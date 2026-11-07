@@ -82,6 +82,7 @@ void main() {
     // legitimately display an indeterminate progress indicator.
     await tester.tap(find.byTooltip('Project information').first);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('REDLEAF TAGS'), findsOneWidget);
     expect(find.text('RLINK LOCATIONS'), findsOneWidget);
