@@ -85,7 +85,13 @@ void main() {
     // or indefinite loading indicators using pumpAndSettle().
     await tester.tap(find.byTooltip('Show inspector'));
     await tester.pump();
+    final viewportWidth =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    final startingX = tester.getTopLeft(find.text('Project Info')).dx;
+    expect(startingX, greaterThanOrEqualTo(viewportWidth));
     await tester.pump(const Duration(milliseconds: 350));
+    final openedX = tester.getTopLeft(find.text('Project Info')).dx;
+    expect(openedX, lessThan(viewportWidth));
 
     expect(find.text('REDLEAF TAGS'), findsOneWidget);
     expect(find.text('RLINK LOCATIONS'), findsOneWidget);
@@ -99,8 +105,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Show inspector'), findsOneWidget);
     final hiddenX = tester.getTopLeft(find.text('Project Info')).dx;
-    expect(hiddenX, greaterThanOrEqualTo(tester.view.physicalSize.width /
-        tester.view.devicePixelRatio));
+    expect(hiddenX, greaterThanOrEqualTo(viewportWidth));
 
     // The top toolbar can reopen it, without reselecting the project.
     await tester.tap(find.byTooltip('Show inspector'));
