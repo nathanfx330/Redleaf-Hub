@@ -96,11 +96,11 @@ void main() {
     expect(find.text('REDLEAF TAGS'), findsOneWidget);
     expect(find.text('RLINK LOCATIONS'), findsOneWidget);
     expect(find.text('PROJECT NOTES'), findsOneWidget);
-    expect(find.byTooltip('Close inspector'), findsOneWidget);
+    expect(find.byTooltip('Hide inspector'), findsOneWidget);
 
     // Closing moves the drawer horizontally outside the viewport, while
     // leaving the current project selected and retaining its notes editor.
-    await tester.tap(find.byTooltip('Close inspector'));
+    await tester.tap(find.byTooltip('Hide inspector'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Show inspector'), findsOneWidget);
@@ -111,6 +111,6 @@ void main() {
     await tester.tap(find.byTooltip('Show inspector'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
-    expect(find.byTooltip('Close inspector'), findsOneWidget);
+    expect(find.byTooltip('Hide inspector'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 20)));
 }
