@@ -1,30 +1,58 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:redleaf_hub/main.dart';
+import 'package:redleaf_hub/state/hub_state.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('project library search filters folders and opens details',
+      (WidgetTester tester) async {
+    final workspace = await Directory.systemTemp.createTemp('redleaf_library_');
+    addTearDown(() async {
+      if (await workspace.exists()) await workspace.delete(recursive: true);
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    for (final name in ['First Archive', 'Second Dataset']) {
+      final project = Directory(p.join(workspace.path, name));
+      await project.create(recursive: true);
+      await File(p.join(project.path, 'run.py')).writeAsString('');
+    }
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    SharedPreferences.setMockInitialValues({
+      'homeDirectory': workspace.path,
+      'nodeLeafPath': '/tmp/node_leaf',
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => HubState(),
+        child: const RedleafHubApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open Project\nLibrary'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('First Archive'), findsOneWidget);
+    expect(find.text('Second Dataset'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'second');
+    await tester.pumpAndSettle();
+
+    expect(find.text('First Archive'), findsNothing);
+    expect(find.text('Second Dataset'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Project information').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('REDLEAF TAGS'), findsOneWidget);
+    expect(find.text('RLINK LOCATIONS'), findsOneWidget);
+    expect(find.text('PROJECT NOTES'), findsOneWidget);
   });
 }
