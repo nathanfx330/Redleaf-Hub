@@ -49,7 +49,7 @@ Future<_InMemoryHubState> _makeHubState() async {
 }
 
 void main() {
-  testWidgets('project library search filters folders and opens details',
+  testWidgets('library search and inspector slide open, closed, and open again',
       (WidgetTester tester) async {
     // SharedPreferences uses asynchronous initialization. Complete it outside
     // the widget-test fake clock, then pump the UI with deterministic state.
@@ -71,21 +71,41 @@ void main() {
     expect(find.text('First Archive'), findsOneWidget);
     expect(find.text('Second Dataset'), findsOneWidget);
 
+    // The inspector starts closed and is not built until first opened.
+    expect(find.byTooltip('Show inspector'), findsOneWidget);
+    expect(find.text('REDLEAF TAGS'), findsNothing);
+
     await tester.enterText(find.byType(TextField).first, 'second');
     await tester.pump();
 
     expect(find.text('First Archive'), findsNothing);
     expect(find.text('Second Dataset'), findsOneWidget);
 
-    // This opens the project details dialog in the default widget-test
-    // viewport. Don't use pumpAndSettle(): its async metadata loader may
-    // legitimately display an indeterminate progress indicator.
-    await tester.tap(find.byTooltip('Project information').first);
+    // Open from the top toolbar; don't wait for filesystem-backed metadata
+    // or indefinite loading indicators using pumpAndSettle().
+    await tester.tap(find.byTooltip('Show inspector'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('REDLEAF TAGS'), findsOneWidget);
     expect(find.text('RLINK LOCATIONS'), findsOneWidget);
     expect(find.text('PROJECT NOTES'), findsOneWidget);
+    expect(find.byTooltip('Close inspector'), findsOneWidget);
+
+    // Closing moves the drawer horizontally outside the viewport, while
+    // leaving the current project selected and retaining its notes editor.
+    await tester.tap(find.byTooltip('Close inspector'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Show inspector'), findsOneWidget);
+    final hiddenX = tester.getTopLeft(find.text('Project Info')).dx;
+    expect(hiddenX, greaterThanOrEqualTo(tester.view.physicalSize.width /
+        tester.view.devicePixelRatio));
+
+    // The top toolbar can reopen it, without reselecting the project.
+    await tester.tap(find.byTooltip('Show inspector'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byTooltip('Close inspector'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 20)));
 }
