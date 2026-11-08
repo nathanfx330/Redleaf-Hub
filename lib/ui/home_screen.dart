@@ -297,16 +297,19 @@ class _HomeScreenState extends State<HomeScreen>
     final searchField = TextField(
       controller: _searchController,
       cursorColor: const Color(0xFFA22323),
+      textAlignVertical: TextAlignVertical.center,
       onChanged: (_) {
         setState(() {});
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(0);
         }
       },
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         isDense: true,
-        hintText: 'Search projects by name or path…',
+        hintText: 'Search projects…',
+        hintMaxLines: 1,
+        hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
         prefixIcon: const Icon(Icons.search, color: Colors.white54),
         suffixIcon: _searchController.text.isEmpty
             ? null
@@ -320,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
         filled: true,
         fillColor: const Color(0xFF101015),
-        contentPadding: const EdgeInsets.symmetric(vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFF383842)),
