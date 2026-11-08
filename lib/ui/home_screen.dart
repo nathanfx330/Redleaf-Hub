@@ -292,89 +292,162 @@ class _HomeScreenState extends State<HomeScreen>
       selectedProject = visibleProjects.first;
     }
 
+    // The project library has its own compact toolbar; project creation and
+    // settings remain on the existing Home screen.
+    final searchField = TextField(
+      controller: _searchController,
+      cursorColor: const Color(0xFFA22323),
+      onChanged: (_) {
+        setState(() {});
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      },
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Search projects by name or path…',
+        prefixIcon: const Icon(Icons.search, color: Colors.white54),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Clear search',
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {});
+                },
+              ),
+        filled: true,
+        fillColor: const Color(0xFF101015),
+        contentPadding: const EdgeInsets.symmetric(vertical: 13),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF383842)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFA22323)),
+        ),
+      ),
+    );
+
+    final inspectorButton = IconButton(
+      tooltip: _inspectorOpen ? 'Hide inspector' : 'Show inspector',
+      icon: Icon(
+        Icons.info_outline,
+        color: _inspectorOpen ? const Color(0xFFA22323) : Colors.white70,
+      ),
+      onPressed: selectedProject == null
+          ? null
+          : () => _toggleInspectorFromHeader(selectedProject!),
+    );
+    final refreshButton = IconButton(
+      icon: const Icon(Icons.refresh, color: Colors.white54),
+      tooltip: 'Scan for folders',
+      onPressed: () => hubState.scanForProjects(),
+    );
+
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          color: const Color(0xFF1E1E24),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => setState(() => _showLibrary = false),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Project Library',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w300,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: _inspectorOpen ? 'Hide inspector' : 'Show inspector',
-                icon: Icon(
-                  Icons.info_outline,
-                  color: _inspectorOpen ? const Color(0xFF4FC1FF) : Colors.white70,
-                ),
-                onPressed: selectedProject == null
-                    ? null
-                    : () => _toggleInspectorFromHeader(selectedProject!),
-              ),
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white54),
-                tooltip: 'Scan for folders',
-                onPressed: () => hubState.scanForProjects(),
-              ),
-            ],
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E24),
+            border: Border(
+              bottom: BorderSide(color: Color(0xFF383842)),
+            ),
           ),
-        ),
-        Container(
-          color: const Color(0xFF101015),
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (_) {
-                    setState(() {});
-                    if (_scrollController.hasClients) {
-                      _scrollController.jumpTo(0);
-                    }
-                  },
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Search projects by name or path…',
-                    prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                    suffixIcon: _searchController.text.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          ),
-                    filled: true,
-                    fillColor: const Color(0xFF22222A),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 1000;
+              final homeButton = IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                tooltip: 'Back to home',
+                onPressed: () => setState(() => _showLibrary = false),
+              );
+              final appTitle = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  homeButton,
+                  const SizedBox(width: 7),
+                  const Icon(
+                    Icons.eco_outlined,
+                    size: 27,
+                    color: Color(0xFFA22323),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Redleaf Hub',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
+                ],
+              );
+              const libraryTitle = Text(
+                'Project Library',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFFE8E8EA),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Text(
+              );
+              final count = Text(
                 '${visibleProjects.length} / ${hubState.projects.length}',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
+                style: const TextStyle(
+                  color: Color(0xFF828290),
+                  fontSize: 12,
+                ),
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    appTitle,
+                    Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        libraryTitle,
+                        const Spacer(),
+                        inspectorButton,
+                        refreshButton,
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    searchField,
+                    const SizedBox(height: 4),
+                    Align(alignment: Alignment.centerRight, child: count),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  appTitle,
+                  const SizedBox(width: 18),
+                  const SizedBox(
+                    height: 26,
+                    child: VerticalDivider(
+                      color: Color(0xFF383842),
+                      thickness: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  libraryTitle,
+                  const Spacer(),
+                  SizedBox(width: 300, child: searchField),
+                  const SizedBox(width: 16),
+                  count,
+                  const SizedBox(width: 8),
+                  inspectorButton,
+                  refreshButton,
+                ],
+              );
+            },
           ),
         ),
         Expanded(
@@ -468,41 +541,109 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
 
-        // --- STUDIO LAUNCHER BAR ---
+        // --- NODE LEAF STATUS / STUDIO LAUNCHER ---
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: hubState.isServerRunning ? 80 : 0,
+          height: hubState.isServerRunning ? 82 : 0,
           width: double.infinity,
           decoration: const BoxDecoration(
-            color: Color(0xFF1E1E24),
-            border: Border(top: BorderSide(color: Color(0xFF383842))),
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              child: Row(
-                children: [
-                  const Icon(Icons.rocket_launch, color: Color(0xFF4fc1ff)),
-                  const SizedBox(width: 15),
-                  const Expanded(
-                    child: Text(
-                      "Server is active. You can safely close the terminal window when you are done.",
-                      style: TextStyle(color: Colors.white70),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4fc1ff),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    ),
-                    icon: const Icon(Icons.account_tree),
-                    label: const Text("LAUNCH NODE LEAF", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                    onPressed: () => hubState.launchNodeLeaf(),
-                  )
-                ],
-              ),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF25252D), Color(0xFF1E1E24)],
             ),
+            border: Border(
+              top: BorderSide(color: Color(0xFF383842)),
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 750;
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 13,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 13,
+                      height: 13,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF73D52C),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Node Leaf',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (!compact) ...[
+                      const SizedBox(width: 22),
+                      const SizedBox(
+                        height: 28,
+                        child: VerticalDivider(
+                          color: Color(0xFF383842),
+                        ),
+                      ),
+                      const SizedBox(width: 22),
+                      const Text(
+                        'Server: ',
+                        style: TextStyle(color: Color(0xFFE8E8EA)),
+                      ),
+                      const Text(
+                        'Online',
+                        style: TextStyle(
+                          color: Color(0xFF73D52C),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Text(
+                        ' (localhost:5000)',
+                        style: TextStyle(color: Color(0xFF828290)),
+                      ),
+                    ],
+                    const Spacer(),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: compact ? 12 : 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: const Text(
+                          'Launch Node Leaf',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        onPressed: () => hubState.launchNodeLeaf(),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -610,7 +751,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
             border: Border(
               left: BorderSide(
                 color: widget.isInspectorActive
-                    ? const Color(0xFF4FC1FF)
+                    ? const Color(0xFF828290)
                     : Colors.transparent,
                 width: 3,
               ),
@@ -625,9 +766,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                   Icon(
                     Icons.folder,
                     size: 27,
-                    color: isActive
-                        ? (isOnline ? Colors.greenAccent : Colors.amber)
-                        : const Color(0xFFA22323),
+                    color: const Color(0xFFA22323),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -666,7 +805,7 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                     icon: Icon(
                       Icons.info_outline,
                       color: widget.isInspectorActive
-                          ? const Color(0xFF4FC1FF)
+                          ? const Color(0xFFA22323)
                           : Colors.white54,
                     ),
                     onPressed: widget.onToggleInfo,
