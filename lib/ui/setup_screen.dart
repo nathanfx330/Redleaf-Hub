@@ -78,6 +78,7 @@ class _SetupScreenState extends State<SetupScreen> {
       gitUrl
     );
     
+    if (!mounted) return;
     setState(() => _isLoading = false);
     
     // If editing from the home screen, we need to pop the navigator
@@ -148,7 +149,7 @@ class _SetupScreenState extends State<SetupScreen> {
             decoration: BoxDecoration(
               color: theme.cardColor, borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFF383842)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 10))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20, offset: const Offset(0, 10))],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -272,11 +273,11 @@ class _SetupScreenState extends State<SetupScreen> {
                         );
                         
                         if (confirm == true) {
-                          if (!mounted) return;
-                          await context.read<HubState>().resetApp();
-                          if (mounted) {
-                            Navigator.of(context).popUntil((route) => route.isFirst);
-                          }
+                          if (!context.mounted) return;
+                          final hubState = context.read<HubState>();
+                          await hubState.resetApp();
+                          if (!context.mounted) return;
+                          Navigator.of(context).popUntil((route) => route.isFirst);
                         }
                       },
                       child: const Text("Reset Hub Settings"),

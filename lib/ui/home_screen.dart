@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../state/hub_state.dart';
 import 'setup_screen.dart';
+import 'project_info_panel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,16 +16,53 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   bool _showLibrary = false;
   bool _isCreatingRepo = false;
   bool _isUpdatingTemplate = false;
   
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedProjectPath;
+  bool _inspectorOpen = false;
+  bool _inspectorHasOpened = false;
+  late final AnimationController _inspectorController;
+  late final Animation<Offset> _inspectorSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _inspectorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _inspectorSlide = Tween<Offset>(
+      begin: const Offset(1, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _inspectorController,
+      curve: Curves.easeInOutCubic,
+    ));
+  }
+
+  void _setInspectorOpen(bool open) {
+    setState(() {
+      _inspectorOpen = open;
+      if (open) _inspectorHasOpened = true;
+    });
+    if (open) {
+      _inspectorController.forward();
+    } else {
+      _inspectorController.reverse();
+    }
+  }
 
   @override
   void dispose() {
+    _inspectorController.dispose();
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -211,92 +249,403 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- UI: CANDY-STRIPED PROJECT LIST ---
+  // Clicking either the row or its info icon toggles that project's inspector.
+  // Clicking another project selects it and keeps the inspector open.
+  void _toggleProjectInspector(RedleafProject project) {
+    final alreadyOpenForProject =
+        _inspectorOpen && _selectedProjectPath == project.path;
+    if (alreadyOpenForProject) {
+      _setInspectorOpen(false);
+    } else {
+      setState(() => _selectedProjectPath = project.path);
+      _setInspectorOpen(true);
+    }
+  }
+
+  void _toggleInspectorFromHeader(RedleafProject project) {
+    if (_inspectorOpen) {
+      _setInspectorOpen(false);
+    } else {
+      // The list may have a default or search-derived selected project.
+      // Make that selection explicit so its row icon can close the drawer.
+      setState(() => _selectedProjectPath = project.path);
+      _setInspectorOpen(true);
+    }
+  }
+
+  // --- UI: SEARCHABLE PROJECT LIBRARY ---
   Widget _buildLibrary(HubState hubState) {
+    final query = _searchController.text.trim().toLowerCase();
+    final visibleProjects = hubState.projects.where((project) {
+      return project.name.toLowerCase().contains(query) ||
+          project.path.toLowerCase().contains(query);
+    }).toList();
+
+    RedleafProject? selectedProject;
+    for (final project in visibleProjects) {
+      if (project.path == _selectedProjectPath) {
+        selectedProject = project;
+        break;
+      }
+    }
+    if (selectedProject == null && visibleProjects.isNotEmpty) {
+      selectedProject = visibleProjects.first;
+    }
+
+    // The project library has its own compact toolbar; project creation and
+    // settings remain on the existing Home screen.
+    final searchField = TextField(
+      controller: _searchController,
+      cursorColor: const Color(0xFFA22323),
+      textAlignVertical: TextAlignVertical.center,
+      onChanged: (_) {
+        setState(() {});
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      },
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Search projects…',
+        hintMaxLines: 1,
+        hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
+        prefixIcon: const Icon(Icons.search, color: Colors.white54),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Clear search',
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {});
+                },
+              ),
+        filled: true,
+        fillColor: const Color(0xFF101015),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF383842)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFA22323)),
+        ),
+      ),
+    );
+
+    final inspectorButton = IconButton(
+      tooltip: _inspectorOpen ? 'Hide inspector' : 'Show inspector',
+      icon: Icon(
+        Icons.info_outline,
+        color: _inspectorOpen ? const Color(0xFFA22323) : Colors.white70,
+      ),
+      onPressed: selectedProject == null
+          ? null
+          : () => _toggleInspectorFromHeader(selectedProject!),
+    );
+    final refreshButton = IconButton(
+      icon: const Icon(Icons.refresh, color: Colors.white54),
+      tooltip: 'Scan for folders',
+      onPressed: () => hubState.scanForProjects(),
+    );
+
     return Column(
       children: [
-        // Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-          color: const Color(0xFF1E1E24),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => setState(() => _showLibrary = false),
-              ),
-              const SizedBox(width: 10),
-              const Text("Project Library", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300, color: Colors.white)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white54),
-                tooltip: "Scan for folders",
-                onPressed: () => hubState.scanForProjects(),
-              ),
-            ],
-          ),
-        ),
-
-        Expanded(
-          child: hubState.projects.isEmpty
-              ? const Center(child: Text("No Redleaf projects found in your Master Folder.", style: TextStyle(color: Colors.white54)))
-              : Scrollbar(
-                  controller: _scrollController,
-                  thumbVisibility: true,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: hubState.projects.length,
-                    itemBuilder: (context, index) {
-                      final project = hubState.projects[index];
-                      final isActiveProject = hubState.activeProject?.path == project.path;
-                      final isOnline = isActiveProject && hubState.isServerRunning;
-                      final bgColor = index % 2 == 0 ? const Color(0xFF0A0A0A) : const Color(0xFF111111);
-
-                      return _ProjectListItem(
-                        project: project,
-                        isActiveProject: isActiveProject,
-                        isOnline: isOnline,
-                        bgColor: bgColor,
-                        hubState: hubState,
-                      );
-                    },
-                  ),
-                ),
-        ),
-
-        // --- STUDIO LAUNCHER BAR ---
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: hubState.isServerRunning ? 80 : 0,
-          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
           decoration: const BoxDecoration(
             color: Color(0xFF1E1E24),
-            border: Border(top: BorderSide(color: Color(0xFF383842))),
+            border: Border(
+              bottom: BorderSide(color: Color(0xFF383842)),
+            ),
           ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              child: Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 1000;
+              final homeButton = IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                tooltip: 'Back to home',
+                onPressed: () => setState(() => _showLibrary = false),
+              );
+              // The Back arrow belongs in the upper-left corner. Keep only
+              // the app title here until the actual brand asset is supplied.
+              final appTitle = Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.rocket_launch, color: Color(0xFF4fc1ff)),
-                  const SizedBox(width: 15),
-                  const Expanded(
-                    child: Text(
-                      "Server is active. You can safely close the terminal window when you are done.",
-                      style: TextStyle(color: Colors.white70),
+                  homeButton,
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Redleaf Hub',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4fc1ff),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    ),
-                    icon: const Icon(Icons.account_tree),
-                    label: const Text("LAUNCH NODE LEAF", style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                    onPressed: () => hubState.launchNodeLeaf(),
-                  )
                 ],
+              );
+              const libraryTitle = Text(
+                'Project Library',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w300,
+                  color: Color(0xFFE8E8EA),
+                ),
+              );
+              final count = Text(
+                '${visibleProjects.length} / ${hubState.projects.length}',
+                style: const TextStyle(
+                  color: Color(0xFF828290),
+                  fontSize: 12,
+                ),
+              );
+
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    appTitle,
+                    Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        libraryTitle,
+                        const Spacer(),
+                        inspectorButton,
+                        refreshButton,
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    searchField,
+                    const SizedBox(height: 4),
+                    Align(alignment: Alignment.centerRight, child: count),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  appTitle,
+                  const SizedBox(width: 18),
+                  const SizedBox(
+                    height: 26,
+                    child: VerticalDivider(
+                      color: Color(0xFF383842),
+                      thickness: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 18),
+                  libraryTitle,
+                  const Spacer(),
+                  SizedBox(width: 300, child: searchField),
+                  const SizedBox(width: 16),
+                  count,
+                  const SizedBox(width: 8),
+                  inspectorButton,
+                  refreshButton,
+                ],
+              );
+            },
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Wide windows resize the list beside the inspector. On narrow
+              // windows the panel overlays the list so the list is never
+              // squeezed down to an unusable width.
+              final compact = constraints.maxWidth < 900;
+              final panelWidth = compact
+                  ? constraints.maxWidth * 0.82
+                  : 390.0;
+              final showInspector = _inspectorOpen && selectedProject != null;
+              const slideDuration = Duration(milliseconds: 300);
+              const slideCurve = Curves.easeInOutCubic;
+
+              return ClipRect(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AnimatedPadding(
+                      duration: slideDuration,
+                      curve: slideCurve,
+                      padding: EdgeInsets.only(
+                        right: !compact && showInspector ? panelWidth : 0,
+                      ),
+                      child: IgnorePointer(
+                        ignoring: compact && showInspector,
+                        child: visibleProjects.isEmpty
+                            ? Center(
+                                child: Text(
+                                  hubState.projects.isEmpty
+                                      ? 'No Redleaf projects found in your Master Folder.'
+                                      : 'No projects match your search.',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                              )
+                            : Scrollbar(
+                                controller: _scrollController,
+                                thumbVisibility: true,
+                                child: ListView.builder(
+                                  controller: _scrollController,
+                                  itemCount: visibleProjects.length,
+                                  itemBuilder: (context, index) {
+                                    final project = visibleProjects[index];
+                                    final isActive = hubState.activeProject?.path == project.path;
+                                    return _ProjectListItem(
+                                      key: ValueKey(project.path),
+                                      project: project,
+                                      isActiveProject: isActive,
+                                      isOnline: isActive && hubState.isServerRunning,
+                                      isInspectorActive: _inspectorOpen &&
+                                          project.path == selectedProject?.path,
+                                      bgColor: index.isEven
+                                          ? const Color(0xFF0A0A0A)
+                                          : const Color(0xFF111111),
+                                      hubState: hubState,
+                                      onToggleInfo: () => _toggleProjectInspector(project),
+                                    );
+                                  },
+                                ),
+                              ),
+                      ),
+                    ),
+                    if (_inspectorHasOpened && selectedProject != null)
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        right: 0,
+                        width: panelWidth,
+                        child: IgnorePointer(
+                          ignoring: !showInspector,
+                          child: SlideTransition(
+                            position: _inspectorSlide,
+                            child: Material(
+                              elevation: 12,
+                              color: const Color(0xFF16161C),
+                              child: ProjectInfoPanel(
+                                key: ValueKey(selectedProject.path),
+                                project: selectedProject,
+                                condaEnv: hubState.condaEnv,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        // --- NODE LEAF STATUS / STUDIO LAUNCHER ---
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: hubState.isServerRunning ? 82 : 0,
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF25252D), Color(0xFF1E1E24)],
+            ),
+            border: Border(
+              top: BorderSide(color: Color(0xFF383842)),
+            ),
+          ),
+          child: ClipRect(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 750;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 13,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 13,
+                          height: 13,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF73D52C),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Node Leaf',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (!compact) ...[
+                          const SizedBox(width: 22),
+                          const SizedBox(
+                            height: 28,
+                            child: VerticalDivider(
+                              color: Color(0xFF383842),
+                            ),
+                          ),
+                          const SizedBox(width: 22),
+                          const Text(
+                            'Server: ',
+                            style: TextStyle(color: Color(0xFFE8E8EA)),
+                          ),
+                          const Text(
+                            'Online',
+                            style: TextStyle(
+                              color: Color(0xFF73D52C),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Text(
+                            ' (localhost:5000)',
+                            style: TextStyle(color: Color(0xFF828290)),
+                          ),
+                        ],
+                        const Spacer(),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compact ? 12 : 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.play_arrow_rounded),
+                            label: const Text(
+                              'Launch Node Leaf',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            onPressed: () => hubState.launchNodeLeaf(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -314,163 +663,223 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// --- NEW WIDGET: Stateful Project List Item to handle hover state ---
+// The project row is selectable without losing its existing folder/server
+// actions. Wrapping the actions keeps it usable beside the info panel.
 class _ProjectListItem extends StatefulWidget {
-  final RedleafProject project;
-  final bool isActiveProject;
-  final bool isOnline;
-  final Color bgColor;
-  final HubState hubState;
-
   const _ProjectListItem({
+    super.key,
     required this.project,
     required this.isActiveProject,
     required this.isOnline,
+    required this.isInspectorActive,
     required this.bgColor,
     required this.hubState,
+    required this.onToggleInfo,
   });
+
+  final RedleafProject project;
+  final bool isActiveProject;
+  final bool isOnline;
+  final bool isInspectorActive;
+  final Color bgColor;
+  final HubState hubState;
+  final VoidCallback onToggleInfo;
 
   @override
   State<_ProjectListItem> createState() => _ProjectListItemState();
 }
 
 class _ProjectListItemState extends State<_ProjectListItem> {
-  // Track hovers independently
   bool _isHoveringRoot = false;
   bool _isHoveringDocs = false;
 
-  Future<void> _openRootFolder() async {
-    final uri = Uri.file(widget.project.path);
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Could not open folder at: ${widget.project.path}"), backgroundColor: Colors.redAccent),
-        );
+  Future<void> _openDirectory(String path) async {
+    try {
+      final uri = Uri.file(path, windows: Platform.isWindows);
+      if (!await launchUrl(uri)) {
+        throw Exception('No file manager accepted the location');
       }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open folder: $path ($error)'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
-  Future<void> _openDocumentsFolder() async {
-    final docsPath = p.join(widget.project.path, 'documents');
-    final uri = Uri.file(docsPath);
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Could not open folder at: $docsPath"), backgroundColor: Colors.redAccent),
-        );
-      }
-    }
+  Widget _folderButton({
+    required String label,
+    required IconData icon,
+    required bool hovering,
+    required ValueChanged<bool> setHover,
+    required VoidCallback onPressed,
+  }) {
+    return MouseRegion(
+      onEnter: (_) => setHover(true),
+      onExit: (_) => setHover(false),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: hovering ? 1.0 : 0.6,
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 17),
+          label: Text(label),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.white70,
+            side: const BorderSide(color: Color(0xFF383842)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: widget.bgColor,
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-      child: Row(
-        children: [
-          Icon(Icons.folder, color: widget.isActiveProject ? (widget.isOnline ? Colors.greenAccent : Colors.amber) : const Color(0xFFA22323), size: 28),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.project.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text(widget.project.path, style: const TextStyle(fontSize: 12, color: Color(0xFF828290))),
-              ],
+    final isActive = widget.isActiveProject;
+    final isOnline = widget.isOnline;
+    return Material(
+      color: widget.isInspectorActive
+          ? const Color(0xFF22222D)
+          : widget.bgColor,
+      child: InkWell(
+        onTap: widget.onToggleInfo,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: widget.isInspectorActive
+                    ? const Color(0xFF828290)
+                    : Colors.transparent,
+                width: 3,
+              ),
+              bottom: const BorderSide(color: Color(0xFF24242B)),
             ),
           ),
-          
-          // Server Status Indicator
-          if (widget.isActiveProject)
-            Padding(
-              padding: const EdgeInsets.only(right: 20.0),
-              child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(Icons.circle, color: widget.isOnline ? Colors.greenAccent : Colors.amber, size: 10),
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.isOnline ? "Online" : "Waiting for Server...", 
-                    style: TextStyle(color: widget.isOnline ? Colors.greenAccent : Colors.amber, fontWeight: FontWeight.bold)
+                  Icon(
+                    Icons.folder,
+                    size: 27,
+                    color: const Color(0xFFA22323),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.project.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Tooltip(
+                          message: widget.project.path,
+                          child: Text(
+                            widget.project.path,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF828290),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Project information',
+                    icon: Icon(
+                      Icons.info_outline,
+                      color: widget.isInspectorActive
+                          ? const Color(0xFFA22323)
+                          : Colors.white54,
+                    ),
+                    onPressed: widget.onToggleInfo,
                   ),
                 ],
               ),
-            ),
-
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Hover "Root" Button
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringRoot = true),
-                onExit: (_) => setState(() => _isHoveringRoot = false),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isHoveringRoot ? 1.0 : 0.3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 10.0),
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.source, size: 18),
-                      label: const Text("Root"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Color(0xFF383842)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              const SizedBox(height: 11),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (isActive)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: isOnline ? Colors.greenAccent : Colors.amber,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isOnline ? 'Online' : 'Waiting for Server…',
+                            style: TextStyle(
+                              color: isOnline ? Colors.greenAccent : Colors.amber,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      onPressed: _openRootFolder,
+                    ),
+                  _folderButton(
+                    label: 'Root',
+                    icon: Icons.source,
+                    hovering: _isHoveringRoot,
+                    setHover: (value) => setState(() => _isHoveringRoot = value),
+                    onPressed: () => _openDirectory(widget.project.path),
+                  ),
+                  _folderButton(
+                    label: 'Documents',
+                    icon: Icons.folder_open,
+                    hovering: _isHoveringDocs,
+                    setHover: (value) => setState(() => _isHoveringDocs = value),
+                    onPressed: () => _openDirectory(
+                      p.join(widget.project.path, 'documents'),
                     ),
                   ),
-                ),
-              ),
-
-              // Hover "Documents" Button
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHoveringDocs = true),
-                onExit: (_) => setState(() => _isHoveringDocs = false),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isHoveringDocs ? 1.0 : 0.3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 15.0),
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text("Documents"),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Color(0xFF383842)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                      onPressed: _openDocumentsFolder,
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isActive
+                          ? const Color(0xFF383842)
+                          : const Color(0xFFA22323),
                     ),
+                    onPressed: () {
+                      if (isActive) {
+                        widget.hubState.unlinkServer();
+                      } else {
+                        widget.hubState.startProjectServer(widget.project);
+                      }
+                    },
+                    child: Text(isActive ? 'Unlink UI' : 'Pop Terminal Server'),
                   ),
-                ),
+                ],
               ),
-
-              // Start/Stop Button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.isActiveProject ? const Color(0xFF383842) : const Color(0xFFA22323),
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  if (widget.isActiveProject) {
-                    widget.hubState.unlinkServer();
-                  } else {
-                    widget.hubState.startProjectServer(widget.project);
-                  }
-                },
-                child: Text(widget.isActiveProject ? "Unlink UI" : "Pop Terminal Server"),
-              )
             ],
-          )
-        ],
+          ),
+        ),
       ),
     );
   }
@@ -505,7 +914,7 @@ class _MenuCard extends StatelessWidget {
             border: Border.all(color: const Color(0xFF383842), width: 2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               )
