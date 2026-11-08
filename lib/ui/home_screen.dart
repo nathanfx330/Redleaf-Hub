@@ -556,8 +556,11 @@ class _HomeScreenState extends State<HomeScreen>
               top: BorderSide(color: Color(0xFF383842)),
             ),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
+          child: ClipRect(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
               final compact = constraints.maxWidth < 750;
               return Padding(
                 padding: const EdgeInsets.symmetric(
@@ -643,7 +646,9 @@ class _HomeScreenState extends State<HomeScreen>
                   ],
                 ),
               );
-            },
+                },
+              ),
+            ),
           ),
         ),
       ],
