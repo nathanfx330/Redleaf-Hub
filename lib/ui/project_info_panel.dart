@@ -234,7 +234,7 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: const Color(0xFF4FC1FF)),
+          Icon(icon, size: 17, color: const Color(0xFFA22323)),
           const SizedBox(width: 9),
           Text(
             title,
@@ -415,7 +415,7 @@ class _ProjectInfoPanelState extends State<ProjectInfoPanel> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFF4FC1FF)),
+                const Icon(Icons.info_outline, color: Color(0xFFA22323)),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
