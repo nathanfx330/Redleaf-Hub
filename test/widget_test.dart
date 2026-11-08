@@ -93,6 +93,11 @@ void main() {
     expect(find.text('First Archive'), findsOneWidget);
     expect(find.text('Second Dataset'), findsOneWidget);
 
+    final searchInput = tester.widget<TextField>(find.byType(TextField).first);
+    expect(searchInput.decoration?.hintText, 'Search projects…');
+    expect(searchInput.decoration?.hintMaxLines, 1);
+    expect(searchInput.textAlignVertical, TextAlignVertical.center);
+
     // The inspector starts closed and is not built until first opened.
     expect(find.byTooltip('Show inspector'), findsOneWidget);
     expect(find.text('REDLEAF TAGS'), findsNothing);
