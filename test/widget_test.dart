@@ -72,9 +72,18 @@ void main() {
     );
     await tester.pump();
 
+    // Creation and settings remain on the unchanged Home screen.
+    expect(find.text('Create New\nRedleaf Repo'), findsOneWidget);
+    expect(find.byTooltip('Settings & Paths'), findsOneWidget);
+
     await tester.tap(find.text('Open Project\nLibrary'));
     await tester.pump();
 
+    expect(find.text('Redleaf Hub'), findsOneWidget);
+    expect(find.text('Project Library'), findsOneWidget);
+    expect(find.byTooltip('Back to home'), findsOneWidget);
+    expect(find.textContaining('Add Project'), findsNothing);
+    expect(find.text('Create New\nRedleaf Repo'), findsNothing);
     expect(find.text('First Archive'), findsOneWidget);
     expect(find.text('Second Dataset'), findsOneWidget);
 
@@ -154,5 +163,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byTooltip('Hide inspector'), findsOneWidget);
     expect(find.text('First Archive'), findsNWidgets(2));
+
+    // Every folder retains Redleaf red; the list never turns red to mark an
+    // active project, and the iTunes-style selected row stays charcoal.
+    for (final icon in tester.widgetList<Icon>(find.byIcon(Icons.folder))) {
+      expect(icon.color, const Color(0xFFA22323));
+    }
+
+    await tester.tap(find.byTooltip('Back to home'));
+    await tester.pump();
+    expect(find.text('Create New\nRedleaf Repo'), findsOneWidget);
+    expect(find.byTooltip('Settings & Paths'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 20)));
 }
