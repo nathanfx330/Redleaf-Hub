@@ -561,91 +561,91 @@ class _HomeScreenState extends State<HomeScreen>
               physics: const NeverScrollableScrollPhysics(),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-              final compact = constraints.maxWidth < 750;
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 13,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 13,
-                      height: 13,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF73D52C),
-                        shape: BoxShape.circle,
-                      ),
+                  final compact = constraints.maxWidth < 750;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 13,
                     ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Node Leaf',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (!compact) ...[
-                      const SizedBox(width: 22),
-                      const SizedBox(
-                        height: 28,
-                        child: VerticalDivider(
-                          color: Color(0xFF383842),
-                        ),
-                      ),
-                      const SizedBox(width: 22),
-                      const Text(
-                        'Server: ',
-                        style: TextStyle(color: Color(0xFFE8E8EA)),
-                      ),
-                      const Text(
-                        'Online',
-                        style: TextStyle(
-                          color: Color(0xFF73D52C),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Text(
-                        ' (localhost:5000)',
-                        style: TextStyle(color: Color(0xFF828290)),
-                      ),
-                    ],
-                    const Spacer(),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: compact ? 12 : 24,
-                            vertical: 14,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 13,
+                          height: 13,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF73D52C),
+                            shape: BoxShape.circle,
                           ),
-                          shape: RoundedRectangleBorder(
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Node Leaf',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (!compact) ...[
+                          const SizedBox(width: 22),
+                          const SizedBox(
+                            height: 28,
+                            child: VerticalDivider(
+                              color: Color(0xFF383842),
+                            ),
+                          ),
+                          const SizedBox(width: 22),
+                          const Text(
+                            'Server: ',
+                            style: TextStyle(color: Color(0xFFE8E8EA)),
+                          ),
+                          const Text(
+                            'Online',
+                            style: TextStyle(
+                              color: Color(0xFF73D52C),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Text(
+                            ' (localhost:5000)',
+                            style: TextStyle(color: Color(0xFF828290)),
+                          ),
+                        ],
+                        const Spacer(),
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: compact ? 12 : 24,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.play_arrow_rounded),
+                            label: const Text(
+                              'Launch Node Leaf',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            onPressed: () => hubState.launchNodeLeaf(),
+                          ),
                         ),
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: const Text(
-                          'Launch Node Leaf',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        onPressed: () => hubState.launchNodeLeaf(),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              );
+                  );
                 },
               ),
             ),
