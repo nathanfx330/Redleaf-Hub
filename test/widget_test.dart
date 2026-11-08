@@ -82,11 +82,12 @@ void main() {
     expect(find.text('Redleaf Hub'), findsOneWidget);
     expect(find.text('Project Library'), findsOneWidget);
     expect(find.byTooltip('Back to home'), findsOneWidget);
-    // The Redleaf mark is the first icon at the far-left edge of the header,
-    // preceding the home-navigation arrow in both desktop and compact layouts.
-    final logoX = tester.getTopLeft(find.byIcon(Icons.eco_outlined)).dx;
+    // Never substitute a generic leaf for the app's real logo. The Back
+    // arrow should instead be the leftmost control, before the app title.
+    expect(find.byIcon(Icons.eco_outlined), findsNothing);
     final homeX = tester.getTopLeft(find.byTooltip('Back to home')).dx;
-    expect(logoX, lessThan(homeX));
+    final titleX = tester.getTopLeft(find.text('Redleaf Hub')).dx;
+    expect(homeX, lessThan(titleX));
     expect(find.textContaining('Add Project'), findsNothing);
     expect(find.text('Create New\nRedleaf Repo'), findsNothing);
     expect(find.text('First Archive'), findsOneWidget);
