@@ -366,11 +366,12 @@ class _HomeScreenState extends State<HomeScreen>
                 tooltip: 'Back to home',
                 onPressed: () => setState(() => _showLibrary = false),
               );
+              // Keep Redleaf's mark at the far left of the library header.
+              // Home navigation belongs beside the library title, not before
+              // the brand logo.
               final appTitle = Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  homeButton,
-                  const SizedBox(width: 7),
                   const Icon(
                     Icons.eco_outlined,
                     size: 27,
@@ -410,7 +411,8 @@ class _HomeScreenState extends State<HomeScreen>
                     appTitle,
                     Row(
                       children: [
-                        const SizedBox(width: 8),
+                        homeButton,
+                        const SizedBox(width: 4),
                         libraryTitle,
                         const Spacer(),
                         inspectorButton,
@@ -436,7 +438,9 @@ class _HomeScreenState extends State<HomeScreen>
                       thickness: 1,
                     ),
                   ),
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 6),
+                  homeButton,
+                  const SizedBox(width: 4),
                   libraryTitle,
                   const Spacer(),
                   SizedBox(width: 300, child: searchField),
