@@ -274,7 +274,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tap(find.text('Open Project\\nLibrary'));
+    await tester.tap(find.text('Open Project\nLibrary'));
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(find.text('Node Leaf'), findsOneWidget);
