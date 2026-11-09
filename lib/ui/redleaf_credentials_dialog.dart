@@ -94,6 +94,7 @@ class _RedleafCredentialsDialogState
         instanceId: id,
         username: _username.text,
         password: _password.text,
+        serverUrl: RedleafSharedCredentialVault.defaultServerUrl,
       );
       _password.clear();
       if (!mounted) return;
@@ -227,9 +228,10 @@ class _RedleafCredentialsDialogState
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  'Saving replaces any previous login for this database. '
-                  'The password is not displayed again, and Redleaf verifies '
-                  'it when MLT Player connects.',
+                  'Saved credentials are only used for the local Redleaf '
+                  'server at http://127.0.0.1:5000. Saving replaces any '
+                  'previous login for this database. Redleaf will verify '
+                  'the password when MLT Player connects.',
                   style: TextStyle(color: Colors.white54, fontSize: 11),
                 ),
                 if (_error != null) ...[
