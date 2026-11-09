@@ -233,6 +233,18 @@ void main() {
 
     expect(find.text('Launch Node Leaf'), findsOneWidget);
     expect(find.text('Launch MLT Player'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('redleaf-studio-launcher')),
+      findsOneWidget,
+    );
+    final launcher = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('redleaf-studio-launcher')),
+    );
+    expect(launcher.constraints?.maxHeight, isNull);
+    expect(launcher.decoration, isNotNull);
+    expect(launcher.duration, const Duration(milliseconds: 300));
+    expect(find.text('REDLEAF'), findsOneWidget);
+    expect(find.text('ONLINE  ·  localhost:5000'), findsOneWidget);
 
     await tester.tap(find.text('Launch MLT Player'));
     await tester.pump();
