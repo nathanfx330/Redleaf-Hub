@@ -34,7 +34,9 @@ class _OnlineMltHubState extends _InMemoryHubState {
 Future<_InMemoryHubState> _makeHubState({
   _InMemoryHubState? existing,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  if (existing == null) {
+    SharedPreferences.setMockInitialValues({});
+  }
   final state = existing ?? _InMemoryHubState();
 
   if (state.isLoading) {
@@ -210,6 +212,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    SharedPreferences.setMockInitialValues({});
     final online = _OnlineMltHubState();
     final loaded = await tester.runAsync(
       () => _makeHubState(existing: online),
@@ -233,10 +236,56 @@ void main() {
 
     expect(find.text('Launch Node Leaf'), findsOneWidget);
     expect(find.text('Launch MLT Player'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('redleaf-studio-launcher')),
+      findsOneWidget,
+    );
+    final launcher = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('redleaf-studio-launcher')),
+    );
+    expect(launcher.constraints?.maxHeight, 82.0);
+    expect(launcher.decoration, isNotNull);
+    expect(launcher.duration, const Duration(milliseconds: 300));
+    expect(find.text('REDLEAF'), findsOneWidget);
+    expect(find.text('ONLINE  ·  localhost:5000'), findsOneWidget);
 
     await tester.tap(find.text('Launch MLT Player'));
     await tester.pump();
     expect(online.launches, 1);
+  }, timeout: const Timeout(Duration(seconds: 20)));
+
+  testWidgets('compact studio launcher retains both actions without overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(680, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final online = _OnlineMltHubState();
+    await tester.runAsync(
+      () => _makeHubState(existing: online),
+    );
+    addTearDown(online.dispose);
+    online
+      ..mltPlayerPath = '/virtual/mlt-player'
+      ..activeProject = online.projects.first;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<HubState>.value(
+        value: online,
+        child: const RedleafHubApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Open Project\nLibrary'));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('Node Leaf'), findsOneWidget);
+    expect(find.text('MLT Player'), findsOneWidget);
+    expect(find.byKey(const ValueKey('redleaf-studio-launcher')),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
   }, timeout: const Timeout(Duration(seconds: 20)));
 
 }
