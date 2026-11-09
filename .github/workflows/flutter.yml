@@ -3,7 +3,7 @@ name: Flutter
 
 on:
   push:
-    branches: [main, feature/mlt-player-project-launch]
+    branches: [main, feature/mlt-player-project-launch, feat-unified-launcher-bar]
   pull_request:
 
 jobs:
