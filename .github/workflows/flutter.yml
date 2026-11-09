@@ -22,9 +22,10 @@ jobs:
       - name: Capture resolved dependency lock (temporary bootstrap)
         shell: bash
         run: |
-          printf 'LOCKFILE_B64_BEGIN\\n'
+          echo 'LOCKFILE_B64_BEGIN'
           base64 -w0 pubspec.lock
-          printf '\\nLOCKFILE_B64_END\\n'
+          echo
+          echo 'LOCKFILE_B64_END'
       - name: Enforce committed dependency lock
         run: git diff --exit-code -- pubspec.lock
       - name: Compare cross-repository credential vault
