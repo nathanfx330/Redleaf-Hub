@@ -8,7 +8,7 @@ import '../services/redleaf_project_identity_service.dart';
 import '../services/redleaf_shared_credential_vault.dart';
 import '../state/hub_state.dart';
 
-/// One project's saved Redleaf login, stored in the operating system keyring.
+/// One project's Redleaf login, stored in a private encrypted local vault.
 /// No password is written to Hub settings, workspace data or logs.
 class RedleafCredentialsDialog extends StatefulWidget {
   const RedleafCredentialsDialog({
@@ -115,8 +115,8 @@ class _RedleafCredentialsDialogState
       builder: (dialogContext) => AlertDialog(
         title: const Text('Remove saved Redleaf login?'),
         content: const Text(
-          'This removes the saved username and password from your desktop '
-          'keyring. It does not affect the Redleaf database or MLT Player '
+          'This removes the saved username and password from the local '
+          'vault. It does not affect the Redleaf database or MLT Player '
           'project. You will need to sign in manually next time.',
         ),
         actions: [
@@ -172,9 +172,9 @@ class _RedleafCredentialsDialogState
               ),
               const SizedBox(height: 8),
               const Text(
-                'Save this Redleaf login to your Linux desktop keyring. '
-                'When launching MLT Player from Hub, MLT Player will use '
-                'the saved credentials for this exact database.',
+                'Save this Redleaf login to the built-in encrypted vault. '
+                'MLT Player can automatically use the saved credentials '
+                'for this exact database. No extra keyring installation is needed.',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 14),
@@ -183,7 +183,7 @@ class _RedleafCredentialsDialogState
               else ...[
                 Text(
                   _saved
-                      ? 'Login saved in your desktop keyring'
+                      ? 'Login saved in the private local vault'
                       : 'No saved login for this project',
                   style: TextStyle(
                     color: _saved
@@ -229,9 +229,9 @@ class _RedleafCredentialsDialogState
                 const SizedBox(height: 10),
                 const Text(
                   'Saved credentials are only used for the local Redleaf '
-                  'server at http://127.0.0.1:5000. Saving replaces any '
-                  'previous login for this database. Redleaf will verify '
-                  'the password when MLT Player connects.',
+                  'server at http://127.0.0.1:5000. Saving replaces the '
+                  'previous login. The encryption key is also stored under '
+                  'your Linux account for automatic login.',
                   style: TextStyle(color: Colors.white54, fontSize: 11),
                 ),
                 if (_error != null) ...[
