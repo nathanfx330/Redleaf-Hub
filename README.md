@@ -14,6 +14,7 @@ Instead of manually managing terminal windows, Python environments, and scattere
 * **Offline Project Generation:** Caches a master template of the Redleaf repository locally. Creating a new project clones it directly from your hard drive, completely internet-independent.
 * **Smart Server Detection:** Click "Pop Terminal Server" to spawn a native OS terminal running the backend. The Hub silently polls the server and illuminates a green "Online" indicator when the database is unlocked and ready.
 * **Node Leaf Integration:** Once a server is live, a launcher bar slides up allowing you to instantly boot your compiled Node Leaf visual canvas.
+* **MLT Player Integration:** The same server-online library footer offers a second launcher for MLT Player. It hands off the selected Redleaf project folder and server URL, not any credentials. MLT Player opens a verified cached workspace immediately or provides its own sign-in, naming, and import onboarding.
 * **Conda Environment Support:** Automatically injects shell hooks and `conda activate <env>` commands into the terminal before booting the Python server.
 * **Custom Fork Support:** Define your own Git URL in the settings to pull down custom enterprise or private forks of the Redleaf engine.
 
@@ -58,6 +59,7 @@ On the first launch, you will be greeted by the **Setup Screen**.
 
 1. **Master Projects Folder:** Select an empty folder on your hard drive where all future Redleaf databases will live.
 2. **Node Leaf Executable:** Point the Hub to the compiled binary of your Node Leaf canvas (e.g., `.../build/linux/x64/release/bundle/node_leaf`).
+3. **MLT Player Executable (Optional):** Choose the compiled MLT Player desktop executable. On Linux, this is typically `.../build/linux/x64/release/bundle/mlt_player`. The initial Hub setup still only requires the master project folder and Node Leaf path.
 3. **Conda Environment (Optional):** If your Redleaf Python dependencies live inside a Conda environment, type the name here (e.g., `redleaf-env`).
 4. **Template Git URL:** The default Redleaf repository URL. Change this if you maintain a private fork.
 
@@ -66,6 +68,47 @@ On the first launch, you will be greeted by the **Setup Screen**.
 2. Click **Create New Redleaf Repo** to spin up an isolated, offline instance.
 3. Click **Pop Terminal Server** on your new project.
 4. Wait for the indicator to turn **Online**, then click **Launch Node Leaf**.
+
+---
+
+## 🎬 MLT Player launch and onboarding
+
+When Redleaf Hub shows the green **Online** status for an active project, the
+Project Library reveals both **Launch Node Leaf** and **Launch MLT Player**.
+If the MLT Player executable is not configured, the second bar provides a
+shortcut to **Settings & Paths** instead. Hub opens the app as a detached
+desktop process.
+
+The handoff arguments are:
+
+```text
+--redleaf-hub-project-path "/path/to/Redleaf project" --redleaf-hub-server-url http://127.0.0.1:5000
+```
+
+Hub passes no username, password, session, or auth token. MLT Player reads the
+selected folder's initialized `knowledge_base.db` in read-only mode to
+identify the database instance, then checks **its own** saved project registry
+and a valid synced transcript snapshot.
+
+- **Saved and synced:** open the exact project and its cached SRT/catalog
+  snapshot immediately, even without a new authentication session.
+- **Unsynced or never imported:** open MLT Player's onboarding dialog. Enter
+  its local display name and Redleaf server URL, username, and password. MLT
+  Player authenticates with Redleaf, verifies the server returned the same
+  instance ID as the selected local database, and imports the catalog.
+- **In MLT Player Trash:** require explicit restoration. A saved cached
+  snapshot can be restored without signing in; an unsynced project needs
+  sign-in and import.
+
+The Redleaf database itself and its media files are not moved, renamed, or
+modified. Existing offline MLT Player launches via `--redleaf-project-path`
+are unchanged; the new Hub-specific flag is deliberately distinct.
+
+**Current limitation:** Hub's server-online indicator tests whether the
+local port 5000 is reachable, not which Redleaf instance is responding.
+MLT Player therefore verifies the authenticated instance ID before importing
+anything. If it reports a mismatch, stop the wrong Redleaf server and launch
+the selected project from Hub.
 
 ---
 
