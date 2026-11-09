@@ -71,44 +71,38 @@ On the first launch, you will be greeted by the **Setup Screen**.
 
 ---
 
-## 🔐 Shared Redleaf login keyring
+## Built-in encrypted Redleaf password vault
 
-Redleaf Hub now offers **Credentials** on every project row in the library.
-Open that dialog to save, replace, or remove a Redleaf username and password
-for that project's **canonical database instance ID**. The identity is read
-from the project's local `knowledge_base.db` in read-only mode. A project
-without an initialized identity cannot be assigned a saved login yet.
+Every Redleaf project in Hub's Project Library has a **Credentials** action.
+Save, replace or remove a Redleaf username and password for that project's
+canonical database instance ID. Hub reads the identity from
+`knowledge_base.db` read-only. The database must already be initialized.
 
-On Linux, credentials are stored in the **desktop Secret Service keyring**
-(such as GNOME Keyring or KWallet), not in Redleaf Hub settings, a project
-file, or a Git repository. Both applications use the same versioned keyring
-attributes, so MLT Player can retrieve the saved login directly from the
-operating-system keyring. Hub's launcher still passes only the project folder
-and server URL, never the password, username, or session cookie.
+There is **no external keyring utility, keyring daemon or operating-system
+package to install**. Both apps bundle the same Dart vault implementation.
+The vault encrypts each credential record with **AES-256-GCM** using a random
+key and unique nonce. On Linux it stores the encrypted records in a private
+directory under `$XDG_DATA_HOME/redleaf-hub-mlt-auth/v2`, defaulting to
+`$HOME/.local/share/redleaf-hub-mlt-auth/v2`. Directory permissions are
+`0700` and key and encrypted record permissions are `0600`.
 
-For Ubuntu, make sure the keyring utility is available:
+The two applications share the same files. The launch arguments still contain
+only the selected project folder and approved server URL, never passwords,
+session cookies or login tokens. Each secret is tied to its Redleaf instance
+ID and approved server origin `http://127.0.0.1:5000`. If the origin changes
+or authentication fails, MLT Player requires manual login. Cached projects
+still open without a network connection or keyring.
 
-```bash
-command -v secret-tool || sudo apt install libsecret-tools
-```
+**Security limitation:** To support automatic login without asking for a
+master password, the encryption key is stored under the same Linux account.
+Encryption and file permissions protect against accidental exposure and
+other Linux users, but an attacker already running code with your user
+permissions could read both the key and the encrypted records. This is not
+equivalent to a hardware-backed or separately unlocked password manager.
 
-The keyring service must be running and unlocked in your desktop session.
-The initial implementation is **Linux-only** and uses the local Redleaf
-server origin `http://127.0.0.1:5000`. Credentials are bound to that server
-origin and the exact Redleaf instance ID. An altered server URL will not
-receive a saved password.
-
-When a saved login exists, MLT Player can sign in automatically on a
-previously synced project while displaying its cached snapshot immediately.
-For a new project, MLT Player offers **Use saved Redleaf login from Hub** in
-the onboarding dialog so you only need to confirm the MLT project name and
-import. If the saved password is wrong or the keyring is unavailable, it
-falls back to manual authentication. The Redleaf server still checks every
-submitted login, and MLT Player verifies the returned database instance ID.
-
-This vault is separate from a web browser's saved-password manager. It does
-not automatically read browser-stored passwords. Credentials must be saved
-explicitly in Redleaf Hub.
+The vault is independent of browser-stored passwords. Save the credential
+once using Hub's project Credentials button. No OS package installation is
+necessary. The cryptography implementation is compiled into the Flutter apps.
 
 ---
 
@@ -128,7 +122,7 @@ The handoff arguments are:
 
 Hub passes no username, password, session, or auth token in its launch
 command. MLT Player can retrieve an explicitly saved Redleaf login from the
-desktop keyring. MLT Player reads the
+shared encrypted local vault. MLT Player reads the
 selected folder's initialized `knowledge_base.db` in read-only mode to
 identify the database instance, then checks **its own** saved project registry
 and a valid synced transcript snapshot.
