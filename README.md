@@ -109,10 +109,12 @@ necessary. The cryptography implementation is compiled into the Flutter apps.
 ## 🎬 MLT Player launch and onboarding
 
 When Redleaf Hub shows the green **Online** status for an active project, the
-Project Library reveals both **Launch Node Leaf** and **Launch MLT Player**.
-If the MLT Player executable is not configured, the second bar provides a
-shortcut to **Settings & Paths** instead. Hub opens the app as a detached
-desktop process.
+Project Library displays **one shared 82-pixel launcher bar** with the selected
+Redleaf project, **Launch Node Leaf**, and **Launch MLT Player** side by side.
+This replaces the two stacked online banners without changing either launch
+action. If the MLT Player executable is not configured, its button opens
+**Settings & Paths** instead. Hub launches each app as a detached desktop
+process. On narrow windows the same actions use compact labels.
 
 The handoff arguments are:
 
