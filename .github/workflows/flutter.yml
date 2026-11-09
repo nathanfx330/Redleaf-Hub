@@ -1,0 +1,23 @@
+# .github/workflows/flutter.yml
+name: Flutter
+
+on:
+  push:
+    branches: [main, feature/mlt-player-project-launch]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze Dart
+        run: flutter analyze
+      - name: Run Flutter tests
+        run: flutter test --reporter expanded

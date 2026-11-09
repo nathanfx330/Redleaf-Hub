@@ -1,3 +1,5 @@
+// test/widget_test.dart
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -17,9 +19,23 @@ class _InMemoryHubState extends HubState {
   }
 }
 
-Future<_InMemoryHubState> _makeHubState() async {
+class _OnlineMltHubState extends _InMemoryHubState {
+  int launches = 0;
+
+  @override
+  bool get isServerRunning => true;
+
+  @override
+  Future<void> launchMltPlayer() async {
+    launches += 1;
+  }
+}
+
+Future<_InMemoryHubState> _makeHubState({
+  _InMemoryHubState? existing,
+}) async {
   SharedPreferences.setMockInitialValues({});
-  final state = _InMemoryHubState();
+  final state = existing ?? _InMemoryHubState();
 
   if (state.isLoading) {
     final ready = Completer<void>();
@@ -186,4 +202,41 @@ void main() {
     expect(find.text('Create New\nRedleaf Repo'), findsOneWidget);
     expect(find.byTooltip('Settings & Paths'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 20)));
+
+  testWidgets('server-online library exposes MLT Player launch beside Node Leaf',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final online = _OnlineMltHubState();
+    final loaded = await tester.runAsync(
+      () => _makeHubState(existing: online),
+    );
+    expect(loaded, same(online));
+    addTearDown(online.dispose);
+    online
+      ..mltPlayerPath = '/virtual/mlt-player'
+      ..activeProject = online.projects.first;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<HubState>.value(
+        value: online,
+        child: const RedleafHubApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Open Project\nLibrary'));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('Launch Node Leaf'), findsOneWidget);
+    expect(find.text('Launch MLT Player'), findsOneWidget);
+
+    await tester.tap(find.text('Launch MLT Player'));
+    await tester.pump();
+    expect(online.launches, 1);
+  }, timeout: const Timeout(Duration(seconds: 20)));
+
 }

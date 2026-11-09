@@ -1,3 +1,5 @@
+// lib/state/hub_state.dart
+
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -14,6 +16,7 @@ class RedleafProject {
 class HubState extends ChangeNotifier {
   String? homeDirectory;
   String? nodeLeafPath;
+  String? mltPlayerPath;
   String? condaEnv; 
   String templateGitUrl = 'https://github.com/nathanfx330/redleaf.git';
   
@@ -42,6 +45,7 @@ class HubState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     homeDirectory = prefs.getString('homeDirectory');
     nodeLeafPath = prefs.getString('nodeLeafPath');
+    mltPlayerPath = prefs.getString('mltPlayerPath');
     condaEnv = prefs.getString('condaEnv'); 
     
     final savedGitUrl = prefs.getString('templateGitUrl');
@@ -60,8 +64,20 @@ class HubState extends ChangeNotifier {
 
   // --- SETTINGS ---
   
-  Future<void> saveSettings(String homeDir, String nodePath, String? conda, String gitUrl) async {
+  Future<void> saveSettings(
+    String homeDir,
+    String nodePath,
+    String? conda,
+    String gitUrl, {
+    String? mltPlayerExecutable,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
+    final chosenMltPath = mltPlayerExecutable ?? mltPlayerPath;
+    if (chosenMltPath == null || chosenMltPath.trim().isEmpty) {
+      await prefs.remove('mltPlayerPath');
+    } else {
+      await prefs.setString('mltPlayerPath', chosenMltPath.trim());
+    }
     await prefs.setString('homeDirectory', homeDir);
     await prefs.setString('nodeLeafPath', nodePath);
     await prefs.setString('templateGitUrl', gitUrl);
@@ -74,6 +90,10 @@ class HubState extends ChangeNotifier {
     
     homeDirectory = homeDir;
     nodeLeafPath = nodePath;
+    mltPlayerPath =
+        chosenMltPath == null || chosenMltPath.trim().isEmpty
+            ? null
+            : chosenMltPath.trim();
     condaEnv = conda;
     templateGitUrl = gitUrl;
     
@@ -88,6 +108,7 @@ class HubState extends ChangeNotifier {
     
     homeDirectory = null;
     nodeLeafPath = null;
+    mltPlayerPath = null;
     condaEnv = null;
     templateGitUrl = 'https://github.com/nathanfx330/redleaf.git';
     projects.clear();
@@ -274,6 +295,51 @@ class HubState extends ChangeNotifier {
     _failedPingCount = 0;
     _pingTimer?.cancel();
     notifyListeners();
+  }
+
+  /// Launch arguments carry project identity context, not passwords or
+  /// Redleaf session cookies. MLT Player decides whether to open a cached
+  /// snapshot or present its own sign-in and onboarding dialog.
+  static List<String> mltPlayerLaunchArguments(
+    RedleafProject project, {
+    String serverUrl = 'http://127.0.0.1:5000',
+  }) {
+    if (project.path.trim().isEmpty) {
+      throw StateError('The selected Redleaf project has no folder path.');
+    }
+    return <String>[
+      '--redleaf-hub-project-path',
+      project.path,
+      '--redleaf-hub-server-url',
+      serverUrl,
+    ];
+  }
+
+  Future<void> launchMltPlayer() async {
+    final project = activeProject;
+    if (!isServerRunning || project == null) {
+      throw StateError('Start a Redleaf project server before launching MLT Player.');
+    }
+    final executable = mltPlayerPath?.trim() ?? '';
+    if (executable.isEmpty) {
+      throw StateError(
+        'Set the MLT Player executable path in Redleaf Hub Settings first.',
+      );
+    }
+
+    final args = mltPlayerLaunchArguments(project);
+    try {
+      await Process.start(
+        executable,
+        args,
+        mode: ProcessStartMode.detached,
+      );
+      debugPrint('Launched MLT Player for ${project.name}.');
+    } on ProcessException catch (error) {
+      throw StateError(
+        'Could not launch MLT Player at "$executable": ${error.message}',
+      );
+    }
   }
 
   Future<void> launchNodeLeaf() async {

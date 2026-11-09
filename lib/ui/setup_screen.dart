@@ -1,3 +1,5 @@
+// lib/ui/setup_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +16,7 @@ class SetupScreen extends StatefulWidget {
 class _SetupScreenState extends State<SetupScreen> {
   String? _selectedHomeDir;
   String? _selectedNodePath;
+  String? _selectedMltPlayerPath;
   final TextEditingController _condaCtrl = TextEditingController();
   final TextEditingController _gitUrlCtrl = TextEditingController(); 
   bool _isLoading = false;
@@ -25,6 +28,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final hubState = context.read<HubState>();
     _selectedHomeDir = hubState.homeDirectory;
     _selectedNodePath = hubState.nodeLeafPath;
+    _selectedMltPlayerPath = hubState.mltPlayerPath;
     
     if (hubState.condaEnv != null) {
       _condaCtrl.text = hubState.condaEnv!;
@@ -55,6 +59,16 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
+  Future<void> _pickMltPlayer() async {
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Select MLT Player Executable',
+      type: FileType.any,
+    );
+    if (result != null && result.files.single.path != null) {
+      setState(() => _selectedMltPlayerPath = result.files.single.path!);
+    }
+  }
+
   void _finishSetup() async {
     if (_selectedHomeDir == null || _selectedNodePath == null) return;
     
@@ -75,7 +89,8 @@ class _SetupScreenState extends State<SetupScreen> {
       _selectedHomeDir!, 
       _selectedNodePath!, 
       condaEnv.isNotEmpty ? condaEnv : null,
-      gitUrl
+      gitUrl,
+      mltPlayerExecutable: _selectedMltPlayerPath ?? '',
     );
     
     if (!mounted) return;
@@ -180,6 +195,21 @@ class _SetupScreenState extends State<SetupScreen> {
                   _selectedNodePath, 
                   _pickNodeLeaf
                 ),
+
+                _buildFileRow(
+                  "MLT Player Executable (Optional)\n(Launch the selected Redleaf project in MLT Player)",
+                  _selectedMltPlayerPath,
+                  _pickMltPlayer,
+                ),
+                if (_selectedMltPlayerPath != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () =>
+                          setState(() => _selectedMltPlayerPath = null),
+                      child: const Text('CLEAR MLT PLAYER PATH'),
+                    ),
+                  ),
 
                 const SizedBox(height: 10),
                 Text("3. Conda Environment (Optional)", style: Theme.of(context).textTheme.titleMedium),
