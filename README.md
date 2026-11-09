@@ -71,6 +71,47 @@ On the first launch, you will be greeted by the **Setup Screen**.
 
 ---
 
+## 🔐 Shared Redleaf login keyring
+
+Redleaf Hub now offers **Credentials** on every project row in the library.
+Open that dialog to save, replace, or remove a Redleaf username and password
+for that project's **canonical database instance ID**. The identity is read
+from the project's local `knowledge_base.db` in read-only mode. A project
+without an initialized identity cannot be assigned a saved login yet.
+
+On Linux, credentials are stored in the **desktop Secret Service keyring**
+(such as GNOME Keyring or KWallet), not in Redleaf Hub settings, a project
+file, or a Git repository. Both applications use the same versioned keyring
+attributes, so MLT Player can retrieve the saved login directly from the
+operating-system keyring. Hub's launcher still passes only the project folder
+and server URL, never the password, username, or session cookie.
+
+For Ubuntu, make sure the keyring utility is available:
+
+```bash
+command -v secret-tool || sudo apt install libsecret-tools
+```
+
+The keyring service must be running and unlocked in your desktop session.
+The initial implementation is **Linux-only** and uses the local Redleaf
+server origin `http://127.0.0.1:5000`. Credentials are bound to that server
+origin and the exact Redleaf instance ID. An altered server URL will not
+receive a saved password.
+
+When a saved login exists, MLT Player can sign in automatically on a
+previously synced project while displaying its cached snapshot immediately.
+For a new project, MLT Player offers **Use saved Redleaf login from Hub** in
+the onboarding dialog so you only need to confirm the MLT project name and
+import. If the saved password is wrong or the keyring is unavailable, it
+falls back to manual authentication. The Redleaf server still checks every
+submitted login, and MLT Player verifies the returned database instance ID.
+
+This vault is separate from a web browser's saved-password manager. It does
+not automatically read browser-stored passwords. Credentials must be saved
+explicitly in Redleaf Hub.
+
+---
+
 ## 🎬 MLT Player launch and onboarding
 
 When Redleaf Hub shows the green **Online** status for an active project, the
@@ -85,7 +126,9 @@ The handoff arguments are:
 --redleaf-hub-project-path "/path/to/Redleaf project" --redleaf-hub-server-url http://127.0.0.1:5000
 ```
 
-Hub passes no username, password, session, or auth token. MLT Player reads the
+Hub passes no username, password, session, or auth token in its launch
+command. MLT Player can retrieve an explicitly saved Redleaf login from the
+desktop keyring. MLT Player reads the
 selected folder's initialized `knowledge_base.db` in read-only mode to
 identify the database instance, then checks **its own** saved project registry
 and a valid synced transcript snapshot.
