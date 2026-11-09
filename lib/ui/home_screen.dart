@@ -169,6 +169,20 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _launchMltPlayer(HubState hubState) async {
+    try {
+      await hubState.launchMltPlayer();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: const Color(0xFFA22323),
+        ),
+      );
+    }
+  }
+
   // --- UI: THE BIG ROUNDED RECTANGLE BUTTONS ---
   Widget _buildMenu() {
     final hubState = context.watch<HubState>();
@@ -647,6 +661,129 @@ class _HomeScreenState extends State<HomeScreen>
                   );
                 },
               ),
+            ),
+          ),
+        ),
+        // MLT Player uses the same server-online slide-up pattern as
+        // Node Leaf. Hub only launches the app; MLT Player checks its own
+        // project registry and prompts for credentials when onboarding.
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: hubState.isServerRunning ? 82 : 0,
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF25252D), Color(0xFF1E1E24)],
+            ),
+            border: Border(
+              top: BorderSide(color: Color(0xFF383842)),
+            ),
+          ),
+          child: ClipRect(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 750;
+                final configured = hubState.mltPlayerPath?.isNotEmpty ?? false;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 13,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 13,
+                        height: 13,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF73D52C),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'MLT Player',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (!compact) ...[
+                        const SizedBox(width: 22),
+                        const SizedBox(
+                          height: 28,
+                          child: VerticalDivider(
+                            color: Color(0xFF383842),
+                          ),
+                        ),
+                        const SizedBox(width: 22),
+                        Expanded(
+                          child: Text(
+                            configured
+                                ? 'Open ${hubState.activeProject?.name ?? 'Redleaf'} in MLT Player'
+                                : 'Configure the MLT Player executable in Settings',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF828290),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ] else
+                        const Spacer(),
+                      if (!compact) const SizedBox(width: 12),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: compact ? 12 : 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: Icon(
+                            configured
+                                ? Icons.play_arrow_rounded
+                                : Icons.settings_outlined,
+                          ),
+                          label: Text(
+                            configured
+                                ? 'Launch MLT Player'
+                                : 'Set MLT Player Path',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: configured
+                              ? () => _launchMltPlayer(hubState)
+                              : () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SetupScreen(),
+                                    ),
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
