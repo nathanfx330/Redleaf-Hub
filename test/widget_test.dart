@@ -251,4 +251,37 @@ void main() {
     expect(online.launches, 1);
   }, timeout: const Timeout(Duration(seconds: 20)));
 
+  testWidgets('compact studio launcher retains both actions without overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(680, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final online = _OnlineMltHubState();
+    await tester.runAsync(
+      () => _makeHubState(existing: online),
+    );
+    addTearDown(online.dispose);
+    online
+      ..mltPlayerPath = '/virtual/mlt-player'
+      ..activeProject = online.projects.first;
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<HubState>.value(
+        value: online,
+        child: const RedleafHubApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Open Project\\nLibrary'));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('Node Leaf'), findsOneWidget);
+    expect(find.text('MLT Player'), findsOneWidget);
+    expect(find.byKey(const ValueKey('redleaf-studio-launcher')),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+  }, timeout: const Timeout(Duration(seconds: 20)));
+
 }
