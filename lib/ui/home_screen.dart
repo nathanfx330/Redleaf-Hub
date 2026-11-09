@@ -1009,18 +1009,19 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                       p.join(widget.project.path, 'documents'),
                     ),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: _manageCredentials,
-                    icon: const Icon(Icons.lock_outline, size: 17),
-                    label: const Text('Credentials'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white70,
-                      side: const BorderSide(color: Color(0xFF383842)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                  if (Platform.isLinux)
+                    OutlinedButton.icon(
+                      onPressed: _manageCredentials,
+                      icon: const Icon(Icons.lock_outline, size: 17),
+                      label: const Text('Credentials'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Color(0xFF383842)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                     ),
-                  ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isActive
