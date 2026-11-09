@@ -4,6 +4,8 @@
 
 Instead of manually managing terminal windows, Python environments, and scattered folders, Redleaf Hub gives you a sleek, dark-themed UI to create, launch, and manage isolated knowledge bases from a single place.
 
+**Development history:** [Development Overview and November 2026 Update](docs/development-journey.md) explains the original launcher, the evolution of the project library and inspector, the MLT Player handoff, the password vault design change, and the final unified studio bar.
+
 ---
 
 ## ✨ Key Features
