@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../state/hub_state.dart';
 import 'setup_screen.dart';
 import 'project_info_panel.dart';
+import 'redleaf_credentials_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -849,6 +850,15 @@ class _ProjectListItemState extends State<_ProjectListItem> {
     }
   }
 
+  Future<void> _manageCredentials() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => RedleafCredentialsDialog(
+        project: widget.project,
+      ),
+    );
+  }
+
   Widget _folderButton({
     required String label,
     required IconData icon,
@@ -997,6 +1007,18 @@ class _ProjectListItemState extends State<_ProjectListItem> {
                     setHover: (value) => setState(() => _isHoveringDocs = value),
                     onPressed: () => _openDirectory(
                       p.join(widget.project.path, 'documents'),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _manageCredentials,
+                    icon: const Icon(Icons.lock_outline, size: 17),
+                    label: const Text('Credentials'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Color(0xFF383842)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                   ),
                   ElevatedButton(
