@@ -34,7 +34,9 @@ class _OnlineMltHubState extends _InMemoryHubState {
 Future<_InMemoryHubState> _makeHubState({
   _InMemoryHubState? existing,
 }) async {
-  SharedPreferences.setMockInitialValues({});
+  if (existing == null) {
+    SharedPreferences.setMockInitialValues({});
+  }
   final state = existing ?? _InMemoryHubState();
 
   if (state.isLoading) {
@@ -210,6 +212,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    SharedPreferences.setMockInitialValues({});
     final online = _OnlineMltHubState();
     final loaded = await tester.runAsync(
       () => _makeHubState(existing: online),
@@ -258,6 +261,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    SharedPreferences.setMockInitialValues({});
     final online = _OnlineMltHubState();
     await tester.runAsync(
       () => _makeHubState(existing: online),
