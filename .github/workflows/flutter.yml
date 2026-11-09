@@ -3,8 +3,9 @@ name: Flutter
 
 on:
   push:
-    branches: [main, feature/mlt-player-project-launch, feat-unified-launcher-bar]
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   verify:
@@ -14,9 +15,20 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.0'
           cache: true
       - name: Install dependencies
         run: flutter pub get
+      - name: Capture resolved dependency lock (temporary bootstrap)
+        shell: bash
+        run: |
+          printf 'LOCKFILE_B64_BEGIN\\n'
+          base64 -w0 pubspec.lock
+          printf '\\nLOCKFILE_B64_END\\n'
+      - name: Enforce committed dependency lock
+        run: git diff --exit-code -- pubspec.lock
+      - name: Compare cross-repository credential vault
+        run: bash tool/check_shared_vault.sh nathanfx330/MLT-Player
       - name: Analyze Dart
         run: flutter analyze
       - name: Run Flutter tests
