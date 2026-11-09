@@ -186,6 +186,45 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Widget _buildStudioLaunchButton({
+    required String label,
+    required IconData icon,
+    required bool compact,
+    required VoidCallback onPressed,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+        ),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 22,
+            vertical: 14,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        icon: Icon(icon, size: 19),
+        label: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        onPressed: onPressed,
+      ),
+    );
+  }
+
   // --- UI: THE BIG ROUNDED RECTANGLE BUTTONS ---
   Widget _buildMenu() {
     final hubState = context.watch<HubState>();
@@ -557,120 +596,10 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
 
-        // --- NODE LEAF STATUS / STUDIO LAUNCHER ---
+        // One shared launcher. The Redleaf server supplies the online state
+        // for both Node Leaf and MLT Player, not two stacked banners.
         AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: hubState.isServerRunning ? 82 : 0,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF25252D), Color(0xFF1E1E24)],
-            ),
-            border: Border(
-              top: BorderSide(color: Color(0xFF383842)),
-            ),
-          ),
-          child: ClipRect(
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 750;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 13,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 13,
-                          height: 13,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF73D52C),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Node Leaf',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (!compact) ...[
-                          const SizedBox(width: 22),
-                          const SizedBox(
-                            height: 28,
-                            child: VerticalDivider(
-                              color: Color(0xFF383842),
-                            ),
-                          ),
-                          const SizedBox(width: 22),
-                          const Text(
-                            'Server: ',
-                            style: TextStyle(color: Color(0xFFE8E8EA)),
-                          ),
-                          const Text(
-                            'Online',
-                            style: TextStyle(
-                              color: Color(0xFF73D52C),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const Text(
-                            ' (localhost:5000)',
-                            style: TextStyle(color: Color(0xFF828290)),
-                          ),
-                        ],
-                        const Spacer(),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: compact ? 12 : 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            icon: const Icon(Icons.play_arrow_rounded),
-                            label: const Text(
-                              'Launch Node Leaf',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            onPressed: () => hubState.launchNodeLeaf(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        // MLT Player uses the same server-online slide-up pattern as
-        // Node Leaf. Hub only launches the app; MLT Player checks its own
-        // project registry and prompts for credentials when onboarding.
-        AnimatedContainer(
+          key: const ValueKey('redleaf-studio-launcher'),
           duration: const Duration(milliseconds: 300),
           height: hubState.isServerRunning ? 82 : 0,
           width: double.infinity,
@@ -689,44 +618,43 @@ class _HomeScreenState extends State<HomeScreen>
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 750;
                 final configured = hubState.mltPlayerPath?.isNotEmpty ?? false;
+                final activeName =
+                    hubState.activeProject?.name ?? 'Redleaf';
                 return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 12 : 24,
                     vertical: 13,
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 13,
-                        height: 13,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF73D52C),
-                          shape: BoxShape.circle,
-                        ),
+                      const Icon(
+                        Icons.circle,
+                        color: Color(0xFF73D52C),
+                        size: 13,
                       ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'MLT Player',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      const SizedBox(width: 10),
                       if (!compact) ...[
-                        const SizedBox(width: 22),
-                        const SizedBox(
-                          height: 28,
-                          child: VerticalDivider(
-                            color: Color(0xFF383842),
+                        const Text(
+                          'REDLEAF',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 22),
-                        Expanded(
+                        const SizedBox(width: 12),
+                        const Text(
+                          'ONLINE  ·  localhost:5000',
+                          style: TextStyle(
+                            color: Color(0xFF73D52C),
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Flexible(
                           child: Text(
-                            configured
-                                ? 'Open ${hubState.activeProject?.name ?? 'Redleaf'} in MLT Player'
-                                : 'Configure the MLT Player executable in Settings',
+                            activeName,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: Color(0xFF828290),
@@ -735,53 +663,39 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ] else
-                        const Spacer(),
-                      if (!compact) const SizedBox(width: 12),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFAB2A32), Color(0xFF831C26)],
+                        const Text(
+                          'ONLINE',
+                          style: TextStyle(
+                            color: Color(0xFF73D52C),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
-                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: compact ? 12 : 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          icon: Icon(
-                            configured
-                                ? Icons.play_arrow_rounded
-                                : Icons.settings_outlined,
-                          ),
-                          label: Text(
-                            configured
-                                ? 'Launch MLT Player'
-                                : 'Set MLT Player Path',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          onPressed: configured
-                              ? () => _launchMltPlayer(hubState)
-                              : () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SetupScreen(),
-                                    ),
+                      const Spacer(),
+                      _buildStudioLaunchButton(
+                        label: compact ? 'Node Leaf' : 'Launch Node Leaf',
+                        icon: Icons.play_arrow_rounded,
+                        compact: compact,
+                        onPressed: hubState.launchNodeLeaf,
+                      ),
+                      const SizedBox(width: 10),
+                      _buildStudioLaunchButton(
+                        label: configured
+                            ? (compact ? 'MLT Player' : 'Launch MLT Player')
+                            : (compact ? 'Set Path' : 'Set MLT Player Path'),
+                        icon: configured
+                            ? Icons.play_arrow_rounded
+                            : Icons.settings_outlined,
+                        compact: compact,
+                        onPressed: configured
+                            ? () => _launchMltPlayer(hubState)
+                            : () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const SetupScreen(),
                                   ),
-                        ),
+                                ),
                       ),
                     ],
                   ),
