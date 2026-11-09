@@ -240,7 +240,7 @@ void main() {
     final launcher = tester.widget<AnimatedContainer>(
       find.byKey(const ValueKey('redleaf-studio-launcher')),
     );
-    expect(launcher.constraints?.maxHeight, isNull);
+    expect(launcher.constraints?.maxHeight, 82.0);
     expect(launcher.decoration, isNotNull);
     expect(launcher.duration, const Duration(milliseconds: 300));
     expect(find.text('REDLEAF'), findsOneWidget);
