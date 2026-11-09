@@ -1,3 +1,5 @@
+// lib/ui/home_screen.dart
+
 // --- File: lib/ui/home_screen.dart ---
 import 'dart:io';
 import 'package:flutter/material.dart';
