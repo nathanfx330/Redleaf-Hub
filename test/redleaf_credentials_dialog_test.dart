@@ -1,6 +1,6 @@
 // test/redleaf_credentials_dialog_test.dart
 
-import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,41 +15,52 @@ class _Identity extends RedleafProjectIdentityService {
       'canonical-database-1';
 }
 
-class _Keyring {
-  String? savedSecret;
+class _FakeVault extends RedleafSharedCredentialVault {
+  _FakeVault() : super(storageDirectory: Directory('/not-used'));
+
+  RedleafSavedCredentials? saved;
   int saves = 0;
   int clears = 0;
 
-  Future<SecretToolResult> run(
-    List<String> args, {
-    String? secret,
+  @override
+  Future<RedleafSavedCredentials?> read(String instanceId) async {
+    expect(instanceId, 'canonical-database-1');
+    return saved;
+  }
+
+  @override
+  Future<void> save({
+    required String instanceId,
+    required String username,
+    required String password,
+    String serverUrl = RedleafSharedCredentialVault.defaultServerUrl,
   }) async {
-    switch (args.first) {
-      case 'lookup':
-        return SecretToolResult(0, savedSecret ?? '');
-      case 'store':
-        saves += 1;
-        savedSecret = secret;
-        return const SecretToolResult(0, '');
-      case 'clear':
-        clears += 1;
-        savedSecret = null;
-        return const SecretToolResult(0, '');
-    }
-    return const SecretToolResult(1, '');
+    expect(instanceId, 'canonical-database-1');
+    saves += 1;
+    saved = RedleafSavedCredentials(
+      username: username,
+      password: password,
+      serverUrl: serverUrl,
+    );
+  }
+
+  @override
+  Future<void> delete(String instanceId) async {
+    expect(instanceId, 'canonical-database-1');
+    clears += 1;
+    saved = null;
   }
 }
 
 void main() {
-  testWidgets('Hub saves and removes one project login from the keyring',
+  testWidgets('Hub saves and removes one project login from its built-in vault',
       (tester) async {
     tester.view.physicalSize = const Size(1500, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final keyring = _Keyring();
-    final vault = RedleafSharedCredentialVault(runner: keyring.run);
+    final vault = _FakeVault();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -84,12 +95,10 @@ void main() {
     await tester.tap(find.text('SAVE LOGIN'));
     await tester.pumpAndSettle();
 
-    expect(keyring.saves, 1);
-    expect(find.text('Login saved in your desktop keyring'), findsOneWidget);
-    final saved = jsonDecode(keyring.savedSecret!)
-        as Map<String, dynamic>;
-    expect(saved['username'], 'editor');
-    expect(saved['password'], 'private-redleaf-password');
+    expect(vault.saves, 1);
+    expect(find.text('Login saved in the private local vault'), findsOneWidget);
+    expect(vault.saved?.username, 'editor');
+    expect(vault.saved?.password, 'private-redleaf-password');
     expect(find.text('private-redleaf-password'), findsNothing);
 
     final remove = find.text('REMOVE SAVED LOGIN');
@@ -99,8 +108,8 @@ void main() {
 
     await tester.tap(find.text('REMOVE LOGIN'));
     await tester.pumpAndSettle();
-    expect(keyring.clears, 1);
-    expect(keyring.savedSecret, isNull);
+    expect(vault.clears, 1);
+    expect(vault.saved, isNull);
     expect(find.text('No saved login for this project'), findsOneWidget);
   });
 }
