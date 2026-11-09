@@ -209,7 +209,7 @@ class _RedleafCredentialsDialogState
                   obscureText: !_showPassword,
                   decoration: InputDecoration(
                     labelText: _saved
-                        ? 'New password (leave blank to keep existing)'
+                        ? 'New password (required to replace saved login)'
                         : 'Redleaf password',
                     isDense: true,
                     border: const OutlineInputBorder(),
