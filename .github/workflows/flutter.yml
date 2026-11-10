@@ -3,21 +3,44 @@ name: Flutter
 
 on:
   push:
-    branches: [main, feature/mlt-player-project-launch, feat-unified-launcher-bar]
+    branches: [main]
   pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * *'
 
 jobs:
   verify:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.0'
           cache: true
       - name: Install dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
+      - name: Enforce committed dependency lock
+        run: git diff --exit-code -- pubspec.lock
+      - name: Compare cross-repository credential vault
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            bash tool/check_shared_vault.sh nathanfx330/MLT-Player advisory
+          else
+            bash tool/check_shared_vault.sh nathanfx330/MLT-Player strict
+          fi
       - name: Analyze Dart
         run: flutter analyze
       - name: Run Flutter tests
         run: flutter test --reporter expanded
+
+  audit-vault-parity:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require cross-repository vault parity after merge window
+        run: bash tool/check_shared_vault.sh nathanfx330/MLT-Player strict
