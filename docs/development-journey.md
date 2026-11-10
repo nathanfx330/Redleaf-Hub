@@ -212,7 +212,7 @@ For implementation and regression details, see the corresponding [MLT Player dev
 
 Hub PR #5 was merged as `46fd392`. The coordinated November 10 vault-check merge concluded with **Hub PR #6** at `3e85e88` and **MLT PR #16** at `bb2bb7e`. CI for both PRs passed before merging. The post-merge audit of the actual `main` files confirmed that the two vault implementations and the two parity checkers were byte-identical.
 
-The local Hub `main` checkout was then fast-forwarded and verified clean at `3e85e88`. The remaining Player shell acknowledgement issue was deliberately deferred, rather than patching a single cancellation path and leaving the other paths unaddressed.
+The remaining Player shell acknowledgement issue was deliberately deferred, rather than patching a single cancellation path and leaving the other paths unaddressed.
 
 ---
 
