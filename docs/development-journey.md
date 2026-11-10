@@ -2,9 +2,9 @@
 
 # Redleaf Hub: Development Overview and Update Record
 
-**Record through November 9, 2026**
+**Record through November 10, 2026**
 
-This is the development history of Redleaf Hub, not its setup manual. Part I explains the problem the application was built to solve and how its architecture and interface evolved. Part II records the November 2026 changes, including the alternatives rejected, problems found in testing, and the reasons for the final design.
+This is the development history of Redleaf Hub, not its setup manual. Part I explains the problem the application was built to solve and how its architecture and interface evolved. Part II records the first November 8 and 9 integration milestones, including the alternatives rejected and problems found in testing. Part III continues through November 10, covering vault reproducibility, paired CI checks and the coordinated Gold merges.
 
 For current installation and daily use, see the [root README](../README.md). For the corresponding player history, see [MLT Player's development journey](https://github.com/nathanfx330/MLT-Player/blob/main/docs/development-journey.md). The linked pull requests are the dated implementation record. A development history describes past decisions; source code and current reference documentation remain the authority for behavior.
 
@@ -151,6 +151,70 @@ Final merged Hub commits include `9521452` for the launch and vault milestone an
 Redleaf Hub now serves as a consistent **entry point for multiple Redleaf-aware applications**. It owns the project picker, offline inspection, process launching and optional saved credentials. Redleaf still owns the database, Node Leaf still owns its visual workflows, and MLT Player owns its project onboarding, media catalog and playback.
 
 The remaining boundary worth protecting is the distinction between **server reachability and server identity**. Port 5000 alone is not authorization; any client that acts on Redleaf data must independently verify the intended database instance.
+
+# Part III. Late November 9 through November 10, 2026
+
+## Chapter 2. Vault hardening, coordinated parity checks, and Gold
+
+The prior chapter stops at the first Hub launch and unified-bar checkpoint. This continuation records later review and CI work, with dates spanning November 9 US Eastern time and the early hours of November 10 UTC. It distinguishes changes made in **Redleaf Hub** from subsequent browser and Player fixes made **only in MLT Player**.
+
+### 1. The shared vault needs a portable and reproducible contract
+
+Hub and MLT Player intentionally ship compatible copies of `lib/services/redleaf_shared_credential_vault.dart`. A review of the initial implementation found that an architecture-specific numeric `O_NOFOLLOW` flag was not a portable way to express the file-creation constraint. The fix kept portable exclusive creation (`O_CREAT | O_EXCL`) without embedding a platform-specific constant in the code.
+
+[Hub PR #5](https://github.com/nathanfx330/Redleaf-Hub/pull/5) and [MLT PR #15](https://github.com/nathanfx330/MLT-Player/pull/15) also added a committed dependency lock and CI enforcement through `flutter pub get --enforce-lockfile` followed by a clean-lockfile check. Flutter CI was pinned to a known stable version, and Hub removed merged feature branches from its push triggers. The paired change added an automated byte-for-byte vault parity check. Its purpose was to prevent the two desktop applications from silently diverging on shared credential handling.
+
+These changes did not alter Redleaf's database, the encrypted vault record format, or the approved login flow. They hardened portability and made dependency and source verification reproducible.
+
+### 2. Two repositories cannot be merged atomically
+
+The initial strict parity check had a practical merge-order problem. Even when the two feature branches contained identical vault source, merging either branch first could cause its `main` CI to fail before the companion repository caught up.
+
+[Hub PR #6](https://github.com/nathanfx330/Redleaf-Hub/pull/6), paired with [MLT PR #16](https://github.com/nathanfx330/MLT-Player/pull/16), established separate policies for three events:
+
+| Event | Vault parity behavior |
+| --- | --- |
+| Pull request | **Strict:** compares the vault with the matching branch in the other repository, falling back to `main` if the branch is absent; drift fails the check. |
+| Push to `main` | **Advisory:** reports mismatches as warnings while an authorized two-repository merge is in progress. |
+| Scheduled job | **Strict:** audits both published `main` branches after the merge window. |
+
+Hub's strict daily audit is scheduled for **09:17 UTC**. MLT Player's is scheduled for **09:43 UTC**. These scheduled jobs are lightweight checks of the cross-repository vault implementation, separate from regular Flutter and native Player tests.
+
+The shared `tool/check_shared_vault.sh` resolves the counterpart branch head with `git ls-remote` and fetches its file through an immutable commit SHA. The earlier approach retrieved `raw.githubusercontent.com` content through a mutable branch URL and could encounter stale branch-cache bytes. After the paired merge, both repositories contained byte-identical scripts as well as byte-identical vault implementations.
+
+The script compares the vault file, not its own script source. Strict failures rely on `set -e` propagation from `report_issue`; no explicit `GIT_TERMINAL_PROMPT=0` was added. GitHub may disable scheduled workflows on inactive public repositories after an extended idle period. These maintenance notes were recorded as nonblocking for this Gold checkpoint.
+
+### 3. The separate MLT Player PROJECT browser and handoff work
+
+After the initial integration, MLT Player improved Redleaf browsing without a corresponding Hub UI change. The distinction matters: Hub still discovers projects, manages the launcher, and passes nonsecret project identity hints. MLT Player independently authenticates and manages its own Redleaf workspace, thumbnails and playback.
+
+The late-November-9 MLT changes included:
+
+- [MLT PR #17](https://github.com/nathanfx330/MLT-Player/pull/17) mounted the existing Redleaf linked-video browser inside **PROJECT**, beside the Project **OVERVIEW**.
+- [MLT PR #18](https://github.com/nathanfx330/MLT-Player/pull/18) stopped reopening that gallery from replaying an old Settings import, and required a process-wide drain of outstanding native thumbnail decoding before Player could open.
+- [MLT PR #19](https://github.com/nathanfx330/MLT-Player/pull/19) renamed the PROJECT destination to **BROWSE** and added the non-modal **Finishing thumbnail…** indication during slow native drain waits. The internal thumbnail/table toggle remains separate from the PROJECT navigation label.
+- [MLT PR #20](https://github.com/nathanfx330/MLT-Player/pull/20) invalidated stale Player requests when workspace or Project navigation occurs, including those awaiting a transcript or thumbnail operation.
+- [MLT PR #21](https://github.com/nathanfx330/MLT-Player/pull/21) restored Redleaf thumbnail browsing after a cancelled handoff, without prematurely restarting decoding while newer operations are pending.
+
+These are media-lifecycle responsibilities of **MLT Player**, not Redleaf Hub. They do not change Hub's home screen, approved library design, process-launch contract or credential-vault semantics. The remaining narrow Player shell acknowledgement edge is tracked separately as [MLT Issue #22](https://github.com/nathanfx330/MLT-Player/issues/22), with low priority.
+
+For implementation and regression details, see the corresponding [MLT Player development journey](https://github.com/nathanfx330/MLT-Player/blob/main/docs/development-journey.md) and its current Redleaf workspace reference.
+
+### 4. Validation and merged Gold checkpoints
+
+| Hub milestone | Merged PR | Evidence or resulting contract |
+| --- | --- | --- |
+| Searchable Project Library and offline inspector | [#1](https://github.com/nathanfx330/Redleaf-Hub/pull/1) | Offline metadata, linked-folder inspection and notes remain independent of a running backend. |
+| Direct MLT Player launch and shared vault | [#2](https://github.com/nathanfx330/Redleaf-Hub/pull/2) | Nonsecret launch arguments, separate client authentication, explicit credential storage. |
+| One-row launcher | [#3](https://github.com/nathanfx330/Redleaf-Hub/pull/3) | Unified server state and distinct app actions, without redesigning the home screen. |
+| Vault portability and dependency reproducibility | [#5](https://github.com/nathanfx330/Redleaf-Hub/pull/5) | Portable exclusive file creation, locked Flutter dependencies, cross-repository parity checks. |
+| Merge-safe vault checks and daily strict audit | [#6](https://github.com/nathanfx330/Redleaf-Hub/pull/6) | Strict PR and nightly parity, advisory `main` pushes, SHA-pinned counterpart fetch. |
+
+Hub PR #5 was merged as `46fd392`. The coordinated November 10 vault-check merge concluded with **Hub PR #6** at `3e85e88` and **MLT PR #16** at `bb2bb7e`. CI for both PRs passed before merging. The post-merge audit of the actual `main` files confirmed that the two vault implementations and the two parity checkers were byte-identical.
+
+The local Hub `main` checkout was then fast-forwarded and verified clean at `3e85e88`. The remaining Player shell acknowledgement issue was deliberately deferred, rather than patching a single cancellation path and leaving the other paths unaddressed.
+
+---
 
 ## Continuing this history
 
